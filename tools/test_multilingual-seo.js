@@ -75,6 +75,9 @@ for (const locale of locales) {
         htmlCount += 1;
 
         assert(html.includes(generatedMarker), `Missing generated marker: ${path.relative(root, filePath)}`);
+        const localizedSocialImage = `${baseUrl}/assets/social/og-image-${locale.slug}.png`;
+        assert(html.includes(`property="og:image" content="${localizedSocialImage}"`), `Wrong social image for ${locale.slug}/${page.key}`);
+        assert(html.includes(`name="twitter:image" content="${localizedSocialImage}"`), `Wrong Twitter image for ${locale.slug}/${page.key}`);
         assert(new RegExp(`<html\\b[^>]*lang=["']${locale.htmlLang}["']`, 'i').test(html), `Wrong lang for ${locale.slug}/${page.key}`);
         assert(new RegExp(`<html\\b[^>]*dir=["']${locale.dir}["']`, 'i').test(html), `Wrong dir for ${locale.slug}/${page.key}`);
         assert(/<base\s+href=["']\/["']>/i.test(html), `Missing root base href for ${locale.slug}/${page.key}`);
@@ -171,8 +174,22 @@ for (const file of socialTargets) {
     assert(/name=["']twitter:card["']/i.test(html), `twitter:card is missing in ${path.relative(root, file)}`);
 }
 
+assert(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes(`${baseUrl}/assets/social/og-image-en.png`), 'The x-default home must use the English social image');
+for (const legacyFile of ['about.html', 'guide.html', 'contact.html', 'privacy.html', 'terms.html']) {
+    assert(fs.readFileSync(path.join(root, legacyFile), 'utf8').includes(`${baseUrl}/assets/social/og-image-ko.png`), `${legacyFile} must use the Korean social image`);
+}
+
+for (const locale of locales) {
+    const imagePath = path.join(root, 'assets', 'social', `og-image-${locale.slug}.png`);
+    assert(fs.existsSync(imagePath), `Localized social image is missing: ${locale.slug}`);
+    const image = fs.readFileSync(imagePath);
+    assert(image.length >= 24 && image.toString('ascii', 1, 4) === 'PNG', `Localized social image is not a PNG: ${locale.slug}`);
+    assert(image.readUInt32BE(16) === 1200 && image.readUInt32BE(20) === 630, `Wrong social image dimensions: ${locale.slug}`);
+}
+
 console.log(`OK: ${htmlCount} localized pages have static translations, canonical URLs, and reciprocal hreflang links`);
 console.log(`OK: sitemap.xml contains ${urlBlocks.length} unique canonical URLs with 13 language alternatives each`);
 console.log('OK: localized app and content-page language switches use directory URLs');
 console.log('OK: Cloudflare _headers/_redirects keep legacy x-default paths at 200');
 console.log(`OK: og:image and twitter:card present on all ${socialTargets.length} pages`);
+console.log(`OK: ${locales.length} localized social images are 1200x630 PNG files`);

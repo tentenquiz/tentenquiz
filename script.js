@@ -3303,7 +3303,7 @@ async function copyShareText(text) {
     fallbackCopyShareText(text);
 }
 
-async function shareOrCopy(title, body) {
+async function shareOrCopy(title, body, includeChallenge = true) {
     const currentUrl = window.location.href;
     if (navigator.share) {
         try {
@@ -3315,7 +3315,8 @@ async function shareOrCopy(title, body) {
         }
     }
 
-    await copyShareText(`${title}\n\n${body}\n\n${uiT('challenge')}\n${currentUrl}`);
+    const challengeLine = includeChallenge ? `\n\n${uiT('challenge')}` : '';
+    await copyShareText(`${title}\n\n${body}${challengeLine}\n${currentUrl}`);
     alert(uiT('copied'));
 }
 
@@ -3331,7 +3332,7 @@ async function copyScoreToClipboard() {
         time: finalTotalTimeText,
         score
     });
-    await shareOrCopy(title, body);
+    await shareOrCopy(title, body, false);
 }
 
 function shareToKakao() {

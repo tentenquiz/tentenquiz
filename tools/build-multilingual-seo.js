@@ -553,7 +553,7 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
         // 소스에 하드코딩된 canonical(/about.html 등)이 308 대상을 가리키지 않도록 덮어씁니다.
         next = upsertCanonical(next, absoluteUrl(baseUrl, pageDefinition.legacyPath));
         next = rewriteLegacyLinks(next);
-        next = applySocialTags(next, baseUrl, null, title, description);
+        next = applySocialTags(next, baseUrl, locale, title, description);
         next = applyNoTranslate(next);
         next = injectAdsense(next, adsenseClient);
         next = deferHeadScripts(next);
@@ -589,6 +589,10 @@ function main() {
         if (codes.has(locale.code) || slugs.has(locale.slug)) throw new Error(`Duplicate locale code or slug: ${locale.code}`);
         codes.add(locale.code);
         slugs.add(locale.slug);
+        const localizedSocialImage = path.join(projectRoot, 'assets', 'social', `og-image-${locale.slug}.png`);
+        if (!fs.existsSync(localizedSocialImage)) {
+            throw new Error(`언어별 소셜 공유 이미지가 없습니다: ${path.relative(projectRoot, localizedSocialImage)}`);
+        }
     }
 
     const uiMessages = loadBrowserGlobal('i18n.js', 'TENTEN_I18N_MESSAGES');
