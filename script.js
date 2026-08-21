@@ -3305,7 +3305,10 @@ async function copyShareText(text) {
 
 function buildCleanShareUrl() {
     const canonicalHref = document.querySelector('link[rel="canonical"]')?.href;
-    const url = new URL(canonicalHref || window.location.href);
+    const shareBaseHref = typeof window.buildTentenPreferenceUrl === 'function'
+        ? window.buildTentenPreferenceUrl(canonicalHref || window.location.href)
+        : (canonicalHref || window.location.href);
+    const url = new URL(shareBaseHref);
     const learningLanguage = String(window.tentenGlobal?.learningLanguage || '').trim();
 
     if (learningLanguage) url.searchParams.set('learn', learningLanguage);

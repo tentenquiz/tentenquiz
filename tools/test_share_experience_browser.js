@@ -6,6 +6,10 @@ const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
 const localeSlugs = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'site.json'), 'utf8')).locales;
+const localeConfigs = localeSlugs.map((slug) => ({
+    slug,
+    ...JSON.parse(fs.readFileSync(path.join(root, 'locales', slug, 'seo.json'), 'utf8'))
+}));
 const sandbox = { window: {}, console };
 sandbox.globalThis = sandbox.window;
 vm.createContext(sandbox);
@@ -121,9 +125,39 @@ function browserExecutable() {
         });
         assert(chinesePayload.url === 'https://tentenquiz.com/ko/?learn=zh-TW&zhReading=zhuyin', 'Chinese share URL lost its reading option');
 
+        for (const locale of localeConfigs) {
+            const learningLanguage = locale.code === 'en' || locale.code === 'ko' ? 'ja' : 'en';
+            await page.evaluate(({ interfaceLanguage, learningLanguage: nextLearningLanguage }) => {
+                localStorage.setItem('tenten.interfaceLanguage', interfaceLanguage);
+                localStorage.setItem('tenten.learningLanguage', nextLearningLanguage);
+            }, { interfaceLanguage: locale.code, learningLanguage });
+            await page.goto(`${origin}/?source=pwa&testLocale=${encodeURIComponent(locale.code)}`, { waitUntil: 'domcontentloaded' });
+            await page.waitForFunction(() => typeof shareToKakao === 'function');
+            const pwaPayload = await page.evaluate(async () => {
+                score = 10;
+                finalTotalTimeText = '45.01';
+                window.__sharePayload = null;
+                await shareToKakao();
+                return window.__sharePayload;
+            });
+            const expectedMessage = messages[locale.code].shareResultMessage
+                .replaceAll('{total}', '10')
+                .replaceAll('{time}', '45.01')
+                .replaceAll('{score}', '10');
+            assert(pwaPayload.text === expectedMessage, `${locale.code} PWA share message does not follow the interface language`);
+            assert(
+                pwaPayload.url === `https://tentenquiz.com/${locale.slug}/?learn=${learningLanguage}`,
+                `${locale.code} PWA share URL does not point to matching preview metadata`
+            );
+            if (locale.code === 'ko') {
+                assert(pwaPayload.title.startsWith('텐텐퀴즈 · 日本語'), 'Korean/Japanese PWA share title is not Korean');
+            }
+        }
+
         console.log('OK: all 12 localized share buttons fit a 360px viewport');
         console.log('OK: all 12 localized pages reference their matching social card');
         console.log('OK: native sharing uses the official clean domain and preserves Chinese reading when needed');
+        console.log('OK: all 12 PWA interface languages share matching text and preview metadata');
         await context.close();
     } finally {
         if (browser) await browser.close();
