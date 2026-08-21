@@ -4015,17 +4015,22 @@ html[dir="rtl"] .daily-quiz-banner {
     box-shadow: none;
 }
 
-/* 2) 좁은 화면에서만 가로 여백 축소.
-      세로 리듬을 흐트러뜨리지 않으려고 padding-left/right 만 지정합니다. */
+/* 2) 좁은 화면: 카드를 화면 끝까지 붙이고(full-bleed), 확보한 폭으로 글자를 키웁니다.
+      여백을 없애는 것만으로는 글자가 커지지 않습니다. 벌어들인 20px 덕분에
+      본문을 16px 로 올려도 한 줄 글자 수가 기존(약 18자)과 같게 유지되는 것이
+      이 조합의 핵심입니다.
+      세로 리듬은 건드리지 않으려고 좌우 padding 만 지정합니다. */
 @media (max-width: 480px) {
     body {
-        padding-left: 10px;
-        padding-right: 10px;
+        padding-left: 0;
+        padding-right: 0;
     }
 
+    /* 화면 끝에 붙으면 둥근 모서리가 배경을 물고 어색해지므로 각지게 만듭니다. */
     .card {
         padding-left: 12px;
         padding-right: 12px;
+        border-radius: 0;
     }
 
     .wrong-answers-box,
@@ -4040,7 +4045,8 @@ html[dir="rtl"] .daily-quiz-banner {
     }
 
     /* 확보한 폭에 맞춰 본문 가독성 보정 */
-    .word-note-text {
-        font-size: 14.5px;
+    .word-note-text,
+    .wrong-meaning {
+        font-size: 16px;
     }
 }
