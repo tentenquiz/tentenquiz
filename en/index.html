@@ -43,7 +43,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="TentenQuiz">
-    <link rel="manifest" href="manifest.webmanifest?v=20260820-pwa-2">
+    <link rel="manifest" href="manifest.webmanifest?v=20260821-install-banner-1">
 
     <!-- ============ TentenQuiz 파비콘 ============ -->
     <link rel="icon" href="favicon.ico?v=20260818-tq-1" sizes="any">
@@ -91,14 +91,14 @@
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260820-click-fix-1">
+    <link rel="stylesheet" href="style.css?v=20260821-install-banner-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "en";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260820-static-locale-seo-1"></script>
-    <script src="i18n.js?v=20260820-click-fix-1"></script>
+    <script src="i18n.js?v=20260821-install-banner-1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -202,14 +202,6 @@
 
         <!-- 첫 화면: 스테이지 선택 화면 -->
         <div id="section-select-screen" class="card section-select-screen">
-            <button id="pwa-install-stage-btn" class="pwa-install-button" data-pwa-step="stage" type="button" hidden>
-                <span class="pwa-install-icon" aria-hidden="true">📲</span>
-                <span class="pwa-install-label">Install</span>
-            </button>
-            <button id="pwa-install-section-btn" class="pwa-install-button" data-pwa-step="section" type="button" hidden>
-                <span class="pwa-install-icon" aria-hidden="true">📲</span>
-                <span class="pwa-install-label">Install</span>
-            </button>
             <h1 class="start-title start-title-float">🙌 <span data-i18n="appTitle">TentenQuiz</span> 🙌</h1>
             <p id="language-badge" class="start-subtitle">🌏 Language</p>
             <div id="global-language-panel" class="global-language-panel">
@@ -245,16 +237,30 @@
             <div id="section-grid" class="section-grid"></div>
             <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">🔄 Choose another stage</button>
 
+            <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
+            <div id="pwa-install-banner" class="pwa-banner" data-pwa-banner="home" hidden>
+                <img class="pwa-banner-appicon" src="assets/favicon/favicon-banner-128x128.png?v=20260821-install-banner-1" alt="" width="52" height="52" decoding="async">
+                <span class="pwa-banner-copy">
+                    <strong class="pwa-banner-title" data-pwa-banner-title></strong>
+                    <span class="pwa-banner-benefit" data-pwa-banner-benefit></span>
+                </span>
+                <button class="pwa-banner-close" type="button" data-pwa-banner-close><span aria-hidden="true">✕</span></button>
+                <button class="pwa-banner-cta" type="button" data-pwa-banner-cta>
+                    <span class="pwa-banner-cta-icon" aria-hidden="true" data-pwa-banner-cta-icon>📲</span>
+                    <span data-pwa-banner-cta-label></span>
+                </button>
+            </div>
+
             <dialog id="pwa-install-help-dialog" class="cloud-backup-dialog" aria-labelledby="pwa-install-help-title">
                 <form method="dialog" class="cloud-backup-dialog-card pwa-install-help-card">
-                    <h3 id="pwa-install-help-title" data-i18n="pwaIosTitle">Add TentenQuiz to your Home Screen</h3>
-                    <p data-i18n="pwaIosDescription">Open TentenQuiz like an app directly from your Home Screen.</p>
+                    <h3 id="pwa-install-help-title" data-pwa-guide-title>Add TentenQuiz to your Home Screen</h3>
+                    <p data-pwa-guide-desc>Open TentenQuiz like an app directly from your Home Screen.</p>
                     <ol class="pwa-install-steps">
-                        <li data-i18n="pwaIosStepShare">1. Tap the browser’s Share button.</li>
-                        <li data-i18n="pwaIosStepAdd">2. Select “Add to Home Screen.”</li>
+                        <li data-pwa-guide-step1>1. Tap the browser’s Share button.</li>
+                        <li data-pwa-guide-step2>2. Select “Add to Home Screen.”</li>
                     </ol>
                     <div class="cloud-backup-dialog-actions">
-                        <button id="pwa-install-complete-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="pwaIosDone">I added the icon</button>
+                        <button id="pwa-install-complete-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-pwa-guide-done>I added the icon</button>
                         <button class="learning-records-btn cloud-backup-secondary-btn" type="submit" data-i18n="close">Close</button>
                     </div>
                 </form>
@@ -388,6 +394,20 @@
     <span id="result-time-line" class="result-time-line">⏱️ Time: 0.00s</span>
 </p>
 
+
+            <!-- 설치 유도 배너 ② 결과: 만점을 맞힌 순간에만 나타납니다. -->
+            <div id="pwa-install-banner-result" class="pwa-banner pwa-banner-result" data-pwa-banner="result" hidden>
+                <img class="pwa-banner-appicon" src="assets/favicon/favicon-banner-128x128.png?v=20260821-install-banner-1" alt="" width="52" height="52" decoding="async">
+                <span class="pwa-banner-copy">
+                    <strong class="pwa-banner-title" data-pwa-banner-title></strong>
+                    <span class="pwa-banner-benefit" data-pwa-banner-benefit></span>
+                </span>
+                <button class="pwa-banner-close" type="button" data-pwa-banner-close><span aria-hidden="true">✕</span></button>
+                <button class="pwa-banner-cta" type="button" data-pwa-banner-cta>
+                    <span class="pwa-banner-cta-icon" aria-hidden="true" data-pwa-banner-cta-icon>📲</span>
+                    <span data-pwa-banner-cta-label></span>
+                </button>
+            </div>
 
             <div style="margin-top: 20px; margin-bottom: 10px;">
                 <button id="share-result-btn" class="kakao-share-btn ui-btn-kakao result-share-btn js-action-share-result" type="button">
@@ -647,7 +667,7 @@
 <script src="learning-records.js?v=20260820-click-fix-1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260820-click-fix-1"></script>
-<script src="pwa-install.js?v=20260820-pwa-desktop-guide-1"></script>
+<script src="pwa-install.js?v=20260821-install-banner-1"></script>
 <script src="ads-consent.js?v=20260820-1"></script>
 
 </body>

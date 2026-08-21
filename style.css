@@ -2913,51 +2913,7 @@ html[dir="rtl"] .global-language-field {
     padding: 36px 20px 28px;
 }
 
-.pwa-install-button {
-    position: absolute;
-    top: 8px;
-    left: 10px;
-    z-index: 5;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    min-height: 24px;
-    max-width: calc(100% - 20px);
-    padding: 3px 7px;
-    border: 1px solid rgba(35, 107, 80, 0.58);
-    border-radius: 999px;
-    background: rgba(239, 248, 243, 0.94);
-    color: #1d5b44;
-    font: inherit;
-    font-size: clamp(10px, 2.4vw, 11.5px);
-    font-weight: 850;
-    line-height: 1.1;
-    white-space: nowrap;
-    box-shadow: 0 3px 8px rgba(35, 107, 80, 0.1);
-    cursor: pointer;
-    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.pwa-install-button[hidden] {
-    display: none;
-}
-
-.pwa-install-button:hover {
-    transform: translateY(-1px);
-    background: #e5f4eb;
-    box-shadow: 0 5px 11px rgba(35, 107, 80, 0.15);
-}
-
-.pwa-install-button:focus-visible {
-    outline: 3px solid rgba(35, 107, 80, 0.18);
-    outline-offset: 2px;
-}
-
-.pwa-install-icon {
-    font-size: 0.92em;
-    line-height: 1;
-}
+/* 예전 모서리 알약 설치 버튼(.pwa-install-button)은 27번 섹션의 배너로 교체되어 제거했습니다. */
 
 .pwa-install-help-card {
     max-width: 440px;
@@ -4160,5 +4116,244 @@ html[dir="rtl"] .daily-quiz-banner {
 
     .stage-title {
         font-size: 16px;
+    }
+}
+
+
+/* =========================================================
+   27. 설치 유도 배너 (PWA)
+   ---------------------------------------------------------
+   교체 전: 카드 좌측 상단 10~11.5px 알약 버튼 "설치".
+   - 화면 모서리는 사용자가 광고·닫기로 학습해 무시하는 자리이고,
+   - 24px 터치 타깃은 권장(44px)의 절반이며,
+   - 연한 초록 톤은 이 앱의 시각 언어에서 "비활성"으로 읽혔습니다.
+
+   교체 후: 가로 전체를 쓰는 배너 2개.
+     ① 홈  — 스테이지/섹션 그리드 바로 아래(첫 행동을 가리지 않음)
+     ② 결과 — 10문제 만점 순간에만(동기가 가장 높은 지점)
+   구조는 [앱 아이콘 | 제목·혜택 | 닫기] + 아래 가로 전체 CTA 입니다.
+   실제 홈 화면에 생길 아이콘을 그대로 보여 주어 결과를 미리 알려 줍니다.
+   RTL(아랍어)에서 좌우가 자동으로 뒤집히도록 논리 속성을 씁니다.
+   ========================================================= */
+.pwa-banner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "icon copy close"
+        "cta  cta  cta";
+    align-items: center;
+    gap: 4px 13px;
+
+    margin: 20px 0 4px;
+    padding: 15px;
+
+    border: 1px solid rgba(159, 47, 47, 0.18);
+    border-radius: 20px;
+
+    background:
+        radial-gradient(120% 140% at 0% 0%, #FFF1E4 0%, rgba(255, 241, 228, 0) 58%),
+        linear-gradient(180deg, #FFFDF8 0%, #FDF6EA 100%);
+
+    box-shadow:
+        0 12px 28px rgba(159, 47, 47, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+    animation: pwaBannerRise 340ms cubic-bezier(0.22, 0.82, 0.3, 1) both;
+}
+
+.pwa-banner[hidden] {
+    display: none;
+}
+
+.pwa-banner-appicon {
+    grid-area: icon;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    box-shadow: 0 6px 14px rgba(84, 62, 35, 0.18);
+}
+
+.pwa-banner-copy {
+    grid-area: copy;
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    text-align: start;
+}
+
+.pwa-banner-title {
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+    color: var(--text-main, #2B2118);
+    word-break: keep-all;
+}
+
+.pwa-banner-benefit {
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-sub, #746858);
+    word-break: keep-all;
+}
+
+.pwa-banner-close {
+    grid-area: close;
+    align-self: start;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-top: -5px;
+    margin-inline-end: -5px;
+
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #A8998A;
+
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.pwa-banner-close:hover {
+    background: rgba(84, 62, 35, 0.07);
+    color: var(--text-sub, #746858);
+}
+
+.pwa-banner-close:focus-visible {
+    outline: 3px solid rgba(159, 47, 47, 0.22);
+    outline-offset: 2px;
+}
+
+.pwa-banner-cta {
+    grid-area: cta;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    width: 100%;
+    min-height: 52px;
+    margin-top: 13px;
+    padding: 13px 18px;
+
+    border: none;
+    border-radius: var(--radius-pill, 999px);
+
+    color: #FFFDF8;
+    background: linear-gradient(135deg, var(--primary, #9F2F2F), var(--primary-dark, #7E2424));
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -0.2px;
+    word-break: keep-all;
+
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(159, 47, 47, 0.26);
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast);
+}
+
+.pwa-banner-cta-icon {
+    font-size: 1.06em;
+    line-height: 1;
+}
+
+@media (hover: hover) {
+    .pwa-banner-cta:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 26px rgba(159, 47, 47, 0.30);
+    }
+}
+
+.pwa-banner-cta:active {
+    transform: scale(0.985);
+}
+
+.pwa-banner-cta:focus-visible {
+    outline: 3px solid rgba(159, 47, 47, 0.28);
+    outline-offset: 3px;
+}
+
+/* 결과 화면 변형: 폭죽 직후라 한 톤 더 따뜻하게 */
+.pwa-banner-result {
+    margin: 18px 0 14px;
+    border-color: rgba(159, 47, 47, 0.26);
+    background:
+        radial-gradient(130% 150% at 0% 0%, #FFE9DA 0%, rgba(255, 233, 218, 0) 62%),
+        linear-gradient(180deg, #FFFDF8 0%, #FFF4E6 100%);
+}
+
+@keyframes pwaBannerRise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pwa-banner { animation: none; }
+}
+
+/* 휴대폰: 26번 섹션과 같은 기준으로 한 단계 키웁니다. */
+@media (max-width: 480px) {
+    .pwa-banner {
+        gap: 4px 12px;
+        padding: 14px 13px;
+        border-radius: 18px;
+    }
+
+    .pwa-banner-title {
+        font-size: 17px;
+    }
+
+    .pwa-banner-benefit {
+        font-size: 13.5px;
+    }
+
+    .pwa-banner-cta {
+        min-height: 54px;
+        font-size: 17px;
+    }
+}
+
+@media (max-width: 360px) {
+    .pwa-banner-appicon {
+        width: 46px;
+        height: 46px;
+    }
+
+    .pwa-banner-title {
+        font-size: 16px;
+    }
+
+    .pwa-banner-cta {
+        font-size: 16px;
+    }
+}
+
+/* 넓은 화면: 가로 전체를 채우는 붉은 막대는 과합니다.
+   카드 자체가 520px 안팎이라 한 줄 배치는 긴 언어(독일어·러시아어)에서
+   글자와 버튼이 겹치므로, 두 줄 구조는 그대로 두고 CTA 폭만 줄입니다.
+   (.restart-btn 등이 쓰는 width: min(100%, 320px) 와 같은 원칙) */
+@media (min-width: 560px) {
+    .pwa-banner {
+        padding: 16px 18px;
+    }
+
+    .pwa-banner-cta {
+        justify-self: center;
+        width: min(100%, 360px);
     }
 }
