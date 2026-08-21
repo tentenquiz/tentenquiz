@@ -1,0 +1,3988 @@
+/* =========================================================
+   중국어 1000단어 퀴즈 - Calm Premium UI Clean Final Version
+   ---------------------------------------------------------
+   최종 정리 내용:
+   1. 누적된 결과 문구 보정 CSS를 전부 정리
+   2. "60초 동안 7문제를 맞혔습니다!" 문구 크기 축소
+   3. 결과 문구 안 숫자 7이 혼자 작거나 크게 보이지 않도록 통일
+   4. 기존 퀴즈 로직에는 영향 없이 UI 스타일만 정리
+   5. 모바일 / PC 모두 안정적으로 보이도록 반응형 유지
+   ========================================================= */
+
+/* =========================================================
+   1. 전역 변수
+   ========================================================= */
+:root {
+    /* 배경 */
+    --bg-base: #F7F0DF;
+    --bg-soft: #FFF9EC;
+
+    /* 표면 */
+    --surface: #FFFDF7;
+    --surface-soft: #FBF4E6;
+
+    /* 텍스트 */
+    --text-main: #2B2118;
+    --text-sub: #746858;
+    --text-muted: #9A8B76;
+
+    /* 메인 포인트 */
+    --primary: #9F2F2F;
+    --primary-dark: #7E2424;
+    --primary-soft: #F4DEDA;
+
+    /* 정답 색상: 너무 진하지 않은 세이지 그린 */
+    --success: #3F8B68;
+    --success-strong: #25684D;
+    --success-soft: #DCEFE4;
+    --success-bg: #EEF8F2;
+
+    /* 오답 색상: 자극적이지 않은 적갈색 */
+    --danger: #B85A52;
+    --danger-dark: #8B302C;
+    --danger-soft: #F2CFCB;
+    --danger-bg: #FFF4F2;
+
+    /* 카카오 */
+    --kakao: #F6D84A;
+    --kakao-text: #3A2D00;
+
+    /* 공통 */
+    --border-soft: rgba(84, 62, 35, 0.12);
+
+    --reveal-card-start: #040E07;
+    --reveal-card-end: #0B2614;
+    --reveal-card-border: #B8AA82;
+    --reveal-card-text: #FFFFFF;
+    --reveal-card-text-shadow: rgba(0, 0, 0, 0.42);
+    --reveal-overlay-hidden: rgba(0, 0, 0, 0);
+    --reveal-overlay-visible: rgba(0, 0, 0, 0.7);
+    --reveal-glow-hidden: rgba(255, 224, 122, 0);
+    --reveal-glow-strong: rgba(255, 224, 122, 0.32);
+    --reveal-glow-soft: rgba(255, 224, 122, 0.20);
+
+    --shadow-card:
+        0 18px 45px rgba(84, 62, 35, 0.10),
+        0 5px 14px rgba(84, 62, 35, 0.06);
+
+    --shadow-button:
+        0 8px 18px rgba(84, 62, 35, 0.08);
+
+    --radius-lg: 28px;
+    --radius-md: 18px;
+    --radius-pill: 999px;
+
+    --transition-fast: 160ms ease;
+}
+
+
+/* =========================================================
+   2. 기본 리셋
+   ========================================================= */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 20px;
+
+    font-family:
+        'Malgun Gothic',
+        'Apple SD Gothic Neo',
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+
+    color: var(--text-main);
+
+    background:
+        radial-gradient(circle at top left, rgba(159, 47, 47, 0.08), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(208, 158, 83, 0.12), transparent 38%),
+        linear-gradient(180deg, var(--bg-soft) 0%, var(--bg-base) 100%);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+button {
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+
+/* =========================================================
+   3. 전체 컨테이너
+   ========================================================= */
+.quiz-container {
+    width: 100%;
+    max-width: 540px;
+    text-align: center;
+}
+
+
+/* =========================================================
+   4. 상단 앱 타이틀
+   ========================================================= */
+.quiz-title {
+    margin: 4px 0 34px;
+
+    font-size: clamp(28px, 7vw, 40px);
+    line-height: 1.15;
+    font-weight: 900;
+    letter-spacing: -1.2px;
+
+    color: var(--text-main);
+
+    white-space: normal;
+    word-break: keep-all;
+}
+
+.current-topic-inline {
+    min-height: 44px;
+    margin: -20px 0 14px;
+    font-size: clamp(14px, 3.5vw, 20px);
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--text-sub);
+}
+
+.quiz-section-return-wrap {
+    margin-top: 10px;
+    display: block;
+}
+
+.quiz-section-return-btn {
+    width: 100%;
+    max-width: 100%;
+    min-height: 46px;
+}
+
+.topic-chip-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.topic-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill, 999px);
+    font-weight: 800;
+    line-height: 1.1;
+    border: 1px solid rgba(84, 62, 35, 0.12);
+}
+
+.topic-chip-section {
+    background: #FFF7EC;
+    color: var(--primary-dark, #7E2424);
+    border-color: rgba(159, 47, 47, 0.25);
+}
+
+.topic-chip-stage {
+    background: #F7F4ED;
+    color: var(--text-main, #2B2118);
+}
+
+.topic-chip-emoji {
+    font-size: 17px;
+    line-height: 1;
+}
+
+.topic-chip-text {
+    font-size: clamp(14px, 3.3vw, 18px);
+    letter-spacing: -0.2px;
+}
+
+.topic-chip-sub {
+    font-size: clamp(11px, 2.8vw, 13px);
+    font-weight: 800;
+    color: var(--text-sub, #746858);
+}
+
+.result-topic-text {
+    margin: 8px 0 12px;
+    text-align: center;
+}
+
+.result-topic-chip-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.result-topic-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill, 999px);
+    border: 1px solid rgba(84, 62, 35, 0.14);
+    line-height: 1.1;
+}
+
+.result-topic-chip-section {
+    background: #FFF7EC;
+    border-color: rgba(159, 47, 47, 0.24);
+    color: var(--primary-dark, #7E2424);
+}
+
+.result-topic-chip-stage {
+    background: #F7F4ED;
+    color: var(--text-main, #2B2118);
+}
+
+.result-topic-emoji {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.result-topic-text-main {
+    font-size: clamp(12px, 2.9vw, 15px);
+    font-weight: 800;
+}
+
+.result-topic-text-sub {
+    font-size: clamp(10px, 2.5vw, 12px);
+    font-weight: 700;
+    color: var(--text-sub, #746858);
+}
+
+.perfect-score-celebration {
+    display: none;
+    margin: 2px 0 10px;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* 전체 화면 폭죽 캔버스는 장식 전용입니다. 어떤 브라우저에서도 버튼 클릭을 가로채지 않습니다. */
+body > canvas {
+    pointer-events: none !important;
+}
+
+.perfect-score-celebration.is-visible {
+    display: block;
+}
+
+.perfect-score-emoji {
+    display: block;
+    width: clamp(80px, 16vw, 112px);
+    height: auto;
+    margin: 0 auto 6px;
+    transform-origin: 50% 100%;
+    animation: perfect-bounce 1.1s ease-in-out infinite;
+}
+
+.perfect-score-message {
+    font-size: clamp(17px, 4.2vw, 24px);
+    font-weight: 900;
+    color: var(--primary-dark, #7E2424);
+    letter-spacing: -0.3px;
+    animation: perfect-fade-up 0.7s ease-out;
+}
+
+@keyframes perfect-bounce {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    25% {
+        transform: translateY(-10px) scale(1.08);
+    }
+    50% {
+        transform: translateY(0) scale(1);
+    }
+    75% {
+        transform: translateY(-8px) scale(1.06);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes perfect-fade-up {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================================================
+   5. 타이머 / 진행 상태
+   ========================================================= */
+.status-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+
+    margin-bottom: 18px;
+    padding: 0 2px;
+}
+
+.timer-box {
+    min-width: 104px;
+    padding: 8px 14px;
+
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+
+    color: #FFFDF8;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: var(--radius-pill);
+
+    box-shadow: 0 8px 18px rgba(159, 47, 47, 0.20);
+
+    font-variant-numeric: tabular-nums;
+}
+
+.progress-text {
+    padding: 8px 13px;
+
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+
+    color: var(--text-sub);
+    background-color: rgba(255, 253, 247, 0.75);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-pill);
+
+    backdrop-filter: blur(6px);
+}
+
+/*
+   Naming layers
+   - ui-*: visual style classes (CSS only)
+   - js-action-*: behavior hook classes (JS only, never styled)
+   - state-*: transient state classes (e.g. state-correct, state-wrong)
+*/
+
+.pause-toggle-btn,
+.ui-btn-pause {
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-sub);
+    background-color: rgba(255, 253, 247, 0.82);
+    border: 1px dashed rgba(159, 47, 47, 0.35);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.pause-toggle-btn:disabled,
+.ui-btn-pause:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.pause-toggle-btn:not(:disabled):hover,
+.ui-btn-pause:not(:disabled):hover {
+    transform: translateY(-1px);
+    background-color: #fffaf0;
+    color: var(--primary-dark);
+}
+
+
+
+/* =========================================================
+   6. 퀴즈 카드 / 결과 카드 공통
+   ========================================================= */
+.card {
+    position: relative;
+    overflow: hidden;
+
+    width: 100%;
+    padding: 34px 22px 24px;
+
+    background-color: var(--surface);
+    border: 1px solid rgba(84, 62, 35, 0.10);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-card);
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 28px;
+    right: 28px;
+
+    height: 4px;
+    border-radius: 0 0 999px 999px;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(159, 47, 47, 0.42),
+        transparent
+    );
+}
+
+
+/* =========================================================
+   7. 문제 표시 영역
+   ========================================================= */
+.pinyin-display {
+    min-height: 72px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-bottom: 28px;
+
+    font-size: clamp(34px, 10vw, 56px);
+    line-height: 1.1;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+
+    color: var(--text-main);
+}
+
+.quiz-pronunciation {
+    margin-top: 6px;
+    font-size: clamp(14px, 3.4vw, 20px);
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--text-sub);
+}
+
+
+/* =========================================================
+   8. 선택지 영역
+   ========================================================= */
+.options-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+
+/* =========================================================
+   9. 선택지 버튼
+   ========================================================= */
+.option-btn,
+.ui-btn-option {
+    width: 100%;
+    min-height: 72px;
+    padding: 16px 18px;
+
+    border: 2px solid #2F765A;
+    border-radius: var(--radius-md);
+
+    background:
+        linear-gradient(110deg, #5BA382 0%, #438A6D 48%, #367A60 100%);
+    color: #FFF0A8;
+
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.32;
+    letter-spacing: 0;
+    word-break: keep-all;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 13px 24px rgba(40, 92, 70, 0.22),
+        0 0 0 1px rgba(47, 118, 90, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        border-color var(--transition-fast),
+        background var(--transition-fast),
+        color var(--transition-fast),
+        filter var(--transition-fast);
+}
+
+.option-btn .option-focus,
+.ui-btn-option .option-focus {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #FFF2A9;
+    font-weight: 900;
+    font-size: 1.12em;
+    line-height: 1.08;
+    letter-spacing: 0.03em;
+    transform: scale(1.03);
+    text-shadow:
+        0 1px 0 rgba(40, 28, 10, 0.95),
+        0 0 12px rgba(255, 230, 128, 0.45);
+    animation: focusWordPulse 0.9s ease-out 1;
+}
+
+.option-btn .option-focus.option-focus-full,
+.ui-btn-option .option-focus.option-focus-full {
+    display: inline;
+    color: inherit;
+    font-weight: inherit;
+    font-size: 1em;
+    line-height: inherit;
+    transform: none;
+    text-shadow: none;
+    animation: none;
+}
+
+@media (hover: hover) {
+    .option-btn:hover,
+    .ui-btn-option:hover {
+        transform: translateY(-2px);
+        border-color: #286B51;
+        background: linear-gradient(110deg, #66AC8D 0%, #4A9274 48%, #3B8266 100%);
+        box-shadow:
+            0 16px 30px rgba(40, 92, 70, 0.27),
+            0 0 0 1px rgba(47, 118, 90, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+}
+
+.option-btn:active,
+.ui-btn-option:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow:
+        0 7px 14px rgba(40, 92, 70, 0.2),
+        0 0 0 1px rgba(47, 118, 90, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.option-btn:focus-visible,
+.ui-btn-option:focus-visible {
+    outline: 3px solid rgba(255, 224, 112, 0.72);
+    outline-offset: 3px;
+}
+
+
+/* =========================================================
+   10. 정답 / 오답 표시
+   ========================================================= */
+
+/* 정답 버튼 */
+.option-btn.correct,
+.option-btn.answer-correct,
+.option-btn.right,
+.ui-btn-option.state-correct {
+    border-color: rgba(63, 139, 104, 0.58) !important;
+    background: linear-gradient(180deg, var(--success-bg) 0%, var(--success-soft) 100%) !important;
+    color: var(--success-strong) !important;
+
+    box-shadow:
+        0 0 0 3px rgba(63, 139, 104, 0.10),
+        0 8px 18px rgba(63, 139, 104, 0.14) !important;
+
+    animation: correctPulse 260ms ease-out 1;
+}
+
+/* 선택한 오답 버튼 */
+.option-btn.wrong,
+.option-btn.answer-wrong,
+.option-btn.incorrect,
+.ui-btn-option.state-wrong {
+    border-color: rgba(184, 90, 82, 0.64) !important;
+    background: linear-gradient(180deg, var(--danger-bg) 0%, var(--danger-soft) 100%) !important;
+    color: var(--danger-dark) !important;
+
+    box-shadow:
+        0 0 0 3px rgba(184, 90, 82, 0.10),
+        0 8px 18px rgba(184, 90, 82, 0.13) !important;
+
+    animation: wrongShake 360ms ease-in-out;
+}
+
+.option-btn:disabled,
+.ui-btn-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.94;
+}
+
+.option-btn.answer-reveal-dim,
+.ui-btn-option.answer-reveal-dim {
+    opacity: 0.35;
+    filter: grayscale(40%);
+}
+
+.timer-warning {
+    color: #FFFDF8 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
+    animation: timerPulse 0.8s infinite;
+}
+
+@keyframes timerPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.10);
+    }
+}
+
+@keyframes correctPulse {
+    0% {
+        transform: scale(1);
+        box-shadow:
+            0 0 0 3px rgba(63, 139, 104, 0.10),
+            0 8px 18px rgba(63, 139, 104, 0.14);
+    }
+
+    55% {
+        transform: scale(1.012);
+        box-shadow:
+            0 0 0 4px rgba(63, 139, 104, 0.12),
+            0 10px 20px rgba(63, 139, 104, 0.16);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow:
+            0 0 0 3px rgba(63, 139, 104, 0.10),
+            0 8px 18px rgba(63, 139, 104, 0.14);
+    }
+}
+
+@keyframes wrongShake {
+    0% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-5px);
+    }
+
+    40% {
+        transform: translateX(5px);
+    }
+
+    60% {
+        transform: translateX(-3px);
+    }
+
+    80% {
+        transform: translateX(3px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+
+/* =========================================================
+   11. 결과 화면 카드
+   ========================================================= */
+.result-container,
+#result-container,
+.result-box,
+#result-box,
+.result-screen,
+#result-screen {
+    width: 100%;
+    padding: 30px 20px 24px;
+
+    background-color: var(--surface);
+    border: 1px solid rgba(84, 62, 35, 0.10);
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-card);
+}
+
+
+/* =========================================================
+   12. 결과 메인 문구 최종 수정
+   ---------------------------------------------------------
+   이 부분이 이번 핵심입니다.
+
+   문제였던 문구:
+   "60초 동안 7문제를 맞혔습니다!"
+
+   수정 내용:
+   1. 문구 전체를 기존보다 작게 표시
+   2. 숫자 7도 주변 글자와 같은 크기로 강제 통일
+   3. #score, .score가 결과 문구 안에 있어도 혼자 커지거나 작아지지 않게 처리
+   ========================================================= */
+
+/*
+   결과 화면의 메인 제목입니다.
+   보통 "타임아웃! 게임 종료" 또는
+   "60초 동안 7문제를 맞혔습니다!"가 h2/h1로 들어갑니다.
+
+   단, 오답노트/정답노트 내부 제목까지 건드리면 안 되므로
+   .wrong-note, .correct-note 내부 제목은 아래에서 따로 다시 잡습니다.
+*/
+.result-container > h1,
+.result-container > h2,
+.result-container > h3,
+#result-container > h1,
+#result-container > h2,
+#result-container > h3,
+.result-box > h1,
+.result-box > h2,
+.result-box > h3,
+#result-box > h1,
+#result-box > h2,
+#result-box > h3,
+.result-screen > h1,
+.result-screen > h2,
+.result-screen > h3,
+#result-screen > h1,
+#result-screen > h2,
+#result-screen > h3,
+.card > h1:not(.quiz-title),
+.card > h2:not(.quiz-title),
+.card > h3:not(.quiz-title) {
+    margin: 8px 0 12px !important;
+
+    /*
+       이미지에서 너무 크게 보였으므로 모바일 기준 27px 전후로 낮췄습니다.
+       PC에서도 32px 이상 커지지 않게 제한합니다.
+    */
+    font-size: clamp(24px, 5.8vw, 32px) !important;
+    line-height: 1.22 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.8px !important;
+
+    color: var(--primary) !important;
+
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
+}
+
+/*
+   핵심 보정:
+   결과 제목 안에 들어간 span, b, strong, em, small, sup, i 등을
+   전부 부모 제목과 같은 크기로 맞춥니다.
+
+   이것 때문에 숫자 7만 작게 보이는 문제가 해결됩니다.
+*/
+.result-container > h1 *,
+.result-container > h2 *,
+.result-container > h3 *,
+#result-container > h1 *,
+#result-container > h2 *,
+#result-container > h3 *,
+.result-box > h1 *,
+.result-box > h2 *,
+.result-box > h3 *,
+#result-box > h1 *,
+#result-box > h2 *,
+#result-box > h3 *,
+.result-screen > h1 *,
+.result-screen > h2 *,
+.result-screen > h3 *,
+#result-screen > h1 *,
+#result-screen > h2 *,
+#result-screen > h3 *,
+.card > h1:not(.quiz-title) *,
+.card > h2:not(.quiz-title) *,
+.card > h3:not(.quiz-title) * {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
+    letter-spacing: inherit !important;
+    color: inherit !important;
+
+    vertical-align: baseline !important;
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+
+    display: inline !important;
+}
+
+/*
+   결과 제목 안의 #score, .score 전용 방어 코드입니다.
+
+   기존 CSS에는 .score, #score를 크게 만드는 전역 스타일이 있었는데,
+   그 스타일이 결과 문장 안의 숫자 7에도 적용되면서 문제가 생겼습니다.
+
+   따라서 결과 제목 안에서는 숫자가 무조건 문장 글자와 같은 크기를 따라가게 합니다.
+*/
+.result-container > h1 #score,
+.result-container > h2 #score,
+.result-container > h3 #score,
+.result-container > h1 .score,
+.result-container > h2 .score,
+.result-container > h3 .score,
+.result-container > h1 .final-score,
+.result-container > h2 .final-score,
+.result-container > h3 .final-score,
+.result-container > h1 #final-score,
+.result-container > h2 #final-score,
+.result-container > h3 #final-score,
+#result-container > h1 #score,
+#result-container > h2 #score,
+#result-container > h3 #score,
+#result-container > h1 .score,
+#result-container > h2 .score,
+#result-container > h3 .score,
+#result-container > h1 .final-score,
+#result-container > h2 .final-score,
+#result-container > h3 .final-score,
+#result-container > h1 #final-score,
+#result-container > h2 #final-score,
+#result-container > h3 #final-score,
+.card > h1 #score,
+.card > h2 #score,
+.card > h3 #score,
+.card > h1 .score,
+.card > h2 .score,
+.card > h3 .score,
+.card > h1 .final-score,
+.card > h2 .final-score,
+.card > h3 .final-score,
+.card > h1 #final-score,
+.card > h2 #final-score,
+.card > h3 #final-score {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
+    letter-spacing: inherit !important;
+    color: inherit !important;
+
+    vertical-align: baseline !important;
+    display: inline !important;
+    position: static !important;
+    transform: none !important;
+}
+
+/*
+   결과 설명 문구입니다.
+   예:
+   "종료 직전까지 총 8문제를 풀었습니다."
+
+   메인 결과 문구보다 작고 차분하게 보이게 유지합니다.
+*/
+.result-container p,
+#result-container p,
+.result-box p,
+#result-box p,
+.result-screen p,
+#result-screen p,
+#result-text,
+.result-text,
+#score-text,
+.score-text,
+#final-message,
+.final-message,
+#result-message,
+.result-message {
+    margin: 8px 0 18px !important;
+
+    font-size: clamp(14px, 3.7vw, 16px) !important;
+    font-weight: 600 !important;
+    line-height: 1.55 !important;
+
+    color: var(--text-sub) !important;
+    word-break: keep-all !important;
+}
+
+
+/*
+   독립 점수 박스용 스타일입니다.
+
+   중요:
+   여기서는 .score, #score를 전역으로 크게 만들지 않습니다.
+   이전 파일의 문제 원인이 바로 그 전역 스타일이었습니다.
+
+   점수가 문장 밖에서 단독으로 쓰일 때만 크게 보이게 합니다.
+*/
+.score:not(h1 .score):not(h2 .score):not(h3 .score),
+#score:not(h1 #score):not(h2 #score):not(h3 #score),
+.final-score:not(h1 .final-score):not(h2 .final-score):not(h3 .final-score),
+#final-score:not(h1 #final-score):not(h2 #final-score):not(h3 #final-score) {
+    margin: 16px auto 18px;
+
+    font-size: clamp(30px, 8vw, 46px);
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -1px;
+
+    color: var(--primary);
+}
+
+
+/* =========================================================
+   13. 기본 액션 버튼
+   ========================================================= */
+.restart-btn,
+#restart-btn,
+.start-btn,
+#start-btn,
+.retry-btn,
+#retry-btn,
+.replay-btn,
+#replay-btn,
+.reset-btn,
+#reset-btn {
+    width: min(100%, 360px);
+    min-height: 58px;
+    margin-top: 16px;
+    padding: 16px 24px;
+
+    border: none;
+    border-radius: var(--radius-pill);
+
+    color: #FFFDF8;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.2;
+
+    cursor: pointer;
+
+    box-shadow: 0 12px 26px rgba(159, 47, 47, 0.24);
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast);
+}
+
+/* 카카오 / 공유 버튼 */
+.kakao-btn,
+#kakao-share-btn,
+.share-btn,
+#share-btn,
+.ui-btn-kakao {
+    min-height: 54px;
+    padding: 14px 22px;
+
+    border: none;
+    border-radius: var(--radius-pill);
+
+    color: var(--kakao-text);
+    background: linear-gradient(135deg, #FFE777, var(--kakao));
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.2;
+
+    cursor: pointer;
+
+    box-shadow: 0 10px 22px rgba(138, 112, 0, 0.16);
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast);
+}
+
+@media (hover: hover) {
+    .restart-btn:hover,
+    #restart-btn:hover,
+    .start-btn:hover,
+    #start-btn:hover,
+    .retry-btn:hover,
+    #retry-btn:hover,
+    .replay-btn:hover,
+    #replay-btn:hover,
+    .reset-btn:hover,
+    #reset-btn:hover,
+    .kakao-btn:hover,
+    #kakao-share-btn:hover,
+    .share-btn:hover,
+    #share-btn:hover,
+    .ui-btn-kakao:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.03);
+    }
+}
+
+.restart-btn:active,
+#restart-btn:active,
+.start-btn:active,
+#start-btn:active,
+.retry-btn:active,
+#retry-btn:active,
+.replay-btn:active,
+#replay-btn:active,
+.reset-btn:active,
+#reset-btn:active,
+.kakao-btn:active,
+#kakao-share-btn:active,
+.share-btn:active,
+#share-btn:active,
+.ui-btn-kakao:active {
+    transform: scale(0.985);
+}
+
+
+/* =========================================================
+   14. 오답노트 / 정답노트 버튼 강조
+   ========================================================= */
+.note-buttons,
+.note-button-container,
+.result-note-buttons,
+#note-buttons,
+#note-button-container,
+#result-note-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    width: 100%;
+    margin-top: 18px;
+}
+
+/* 오답노트 버튼 */
+.wrong-note-btn,
+#wrong-note-btn,
+.incorrect-note-btn,
+#incorrect-note-btn,
+.wrong-list-btn,
+#wrong-list-btn,
+.mistake-note-btn,
+#mistake-note-btn,
+.mistake-list-btn,
+#mistake-list-btn,
+.btn-wrong,
+.btn-incorrect,
+.btn-mistake {
+    width: min(100%, 380px) !important;
+    min-height: 64px !important;
+    margin: 10px auto 0 !important;
+    padding: 17px 24px !important;
+
+    border: 2px solid rgba(139, 48, 44, 0.82) !important;
+    border-radius: 18px !important;
+
+    color: #FFFDF8 !important;
+    background: linear-gradient(135deg, #C8554D 0%, #8B302C 100%) !important;
+
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.3px !important;
+
+    box-shadow:
+        0 14px 28px rgba(139, 48, 44, 0.28),
+        0 3px 8px rgba(84, 32, 32, 0.16) !important;
+
+    cursor: pointer;
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast) !important;
+}
+
+/* 정답노트 버튼 */
+.correct-note-btn,
+#correct-note-btn,
+.answer-note-btn,
+#answer-note-btn,
+.correct-list-btn,
+#correct-list-btn,
+.answer-list-btn,
+#answer-list-btn,
+.btn-correct,
+.btn-answer {
+    width: min(100%, 380px) !important;
+    min-height: 64px !important;
+    margin: 10px auto 0 !important;
+    padding: 17px 24px !important;
+
+    border: 2px solid rgba(37, 104, 77, 0.78) !important;
+    border-radius: 18px !important;
+
+    color: #FFFDF8 !important;
+    background: linear-gradient(135deg, #4F9B76 0%, #25684D 100%) !important;
+
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.3px !important;
+
+    box-shadow:
+        0 14px 28px rgba(37, 104, 77, 0.24),
+        0 3px 8px rgba(20, 70, 48, 0.14) !important;
+
+    cursor: pointer;
+
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast) !important;
+}
+
+@media (hover: hover) {
+    .wrong-note-btn:hover,
+    #wrong-note-btn:hover,
+    .incorrect-note-btn:hover,
+    #incorrect-note-btn:hover,
+    .wrong-list-btn:hover,
+    #wrong-list-btn:hover,
+    .mistake-note-btn:hover,
+    #mistake-note-btn:hover,
+    .mistake-list-btn:hover,
+    #mistake-list-btn:hover,
+    .correct-note-btn:hover,
+    #correct-note-btn:hover,
+    .answer-note-btn:hover,
+    #answer-note-btn:hover,
+    .correct-list-btn:hover,
+    #correct-list-btn:hover,
+    .answer-list-btn:hover,
+    #answer-list-btn:hover,
+    .btn-wrong:hover,
+    .btn-incorrect:hover,
+    .btn-mistake:hover,
+    .btn-correct:hover,
+    .btn-answer:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.04);
+    }
+}
+
+.wrong-note-btn:active,
+#wrong-note-btn:active,
+.incorrect-note-btn:active,
+#incorrect-note-btn:active,
+.wrong-list-btn:active,
+#wrong-list-btn:active,
+.mistake-note-btn:active,
+#mistake-note-btn:active,
+.mistake-list-btn:active,
+#mistake-list-btn:active,
+.correct-note-btn:active,
+#correct-note-btn:active,
+.answer-note-btn:active,
+#answer-note-btn:active,
+.correct-list-btn:active,
+#correct-list-btn:active,
+.answer-list-btn:active,
+#answer-list-btn:active {
+    transform: scale(0.985);
+}
+
+
+/* =========================================================
+   15. 오답노트 / 정답노트 영역
+   ========================================================= */
+
+/* 오답노트 영역 */
+.wrong-note,
+#wrong-note,
+.incorrect-note,
+#incorrect-note,
+.wrong-list,
+#wrong-list,
+.mistake-note,
+#mistake-note,
+.mistake-list,
+#mistake-list {
+    margin-top: 18px;
+    padding: 18px 16px;
+
+    border: 2px solid rgba(139, 48, 44, 0.34);
+    border-radius: 20px;
+
+    background: linear-gradient(180deg, #FFF6F4 0%, #F6DDD9 100%);
+
+    box-shadow:
+        0 12px 28px rgba(139, 48, 44, 0.13),
+        0 3px 8px rgba(84, 32, 32, 0.08);
+}
+
+/* 정답노트 영역 */
+.correct-note,
+#correct-note,
+.answer-note,
+#answer-note,
+.correct-list,
+#correct-list,
+.answer-list,
+#answer-list {
+    margin-top: 18px;
+    padding: 18px 16px;
+
+    border: 2px solid rgba(63, 139, 104, 0.34);
+    border-radius: 20px;
+
+    background: linear-gradient(180deg, #F3FAF6 0%, #DCEFE4 100%);
+
+    box-shadow:
+        0 12px 28px rgba(63, 139, 104, 0.13),
+        0 3px 8px rgba(20, 70, 48, 0.08);
+}
+
+/*
+   오답노트 제목
+   결과 메인 제목 보정과 충돌하지 않도록 여기서 다시 명확히 지정합니다.
+*/
+.wrong-note h2,
+#wrong-note h2,
+.wrong-note h3,
+#wrong-note h3,
+.incorrect-note h2,
+#incorrect-note h2,
+.incorrect-note h3,
+#incorrect-note h3,
+.wrong-list h2,
+#wrong-list h2,
+.wrong-list h3,
+#wrong-list h3,
+.mistake-note h2,
+#mistake-note h2,
+.mistake-note h3,
+#mistake-note h3,
+.mistake-list h2,
+#mistake-list h2,
+.mistake-list h3,
+#mistake-list h3 {
+    margin: 0 0 12px !important;
+
+    color: var(--danger-dark) !important;
+
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+}
+
+/* 정답노트 제목 */
+.correct-note h2,
+#correct-note h2,
+.correct-note h3,
+#correct-note h3,
+.answer-note h2,
+#answer-note h2,
+.answer-note h3,
+#answer-note h3,
+.correct-list h2,
+#correct-list h2,
+.correct-list h3,
+#correct-list h3,
+.answer-list h2,
+#answer-list h2,
+.answer-list h3,
+#answer-list h3 {
+    margin: 0 0 12px !important;
+
+    color: var(--success-strong) !important;
+
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+}
+
+/* 노트 안 리스트 공통 */
+.wrong-note ul,
+#wrong-note ul,
+.incorrect-note ul,
+#incorrect-note ul,
+.wrong-list ul,
+#wrong-list ul,
+.mistake-note ul,
+#mistake-note ul,
+.mistake-list ul,
+#mistake-list ul,
+.correct-note ul,
+#correct-note ul,
+.answer-note ul,
+#answer-note ul,
+.correct-list ul,
+#correct-list ul,
+.answer-list ul,
+#answer-list ul {
+    margin: 0;
+    padding: 0;
+}
+
+/* 노트 안 항목 */
+.wrong-note li,
+#wrong-note li,
+.incorrect-note li,
+#incorrect-note li,
+.wrong-list li,
+#wrong-list li,
+.mistake-note li,
+#mistake-note li,
+.mistake-list li,
+#mistake-list li,
+.correct-note li,
+#correct-note li,
+.answer-note li,
+#answer-note li,
+.correct-list li,
+#correct-list li,
+.answer-list li,
+#answer-list li {
+    margin: 8px 0;
+    padding: 12px 14px;
+
+    list-style: none;
+
+    background-color: rgba(255, 255, 255, 0.76);
+    border-radius: 14px;
+
+    color: #2B2118;
+
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.45;
+
+    box-shadow: 0 3px 8px rgba(84, 62, 35, 0.08);
+}
+
+
+/* =========================================================
+   16. 숨김 처리
+   ========================================================= */
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================================================
+   17. 태블릿 / PC 레이아웃
+   ========================================================= */
+@media (min-width: 520px) {
+    body {
+        padding: 28px;
+    }
+
+    .card {
+        padding: 42px 34px 32px;
+    }
+
+    .options-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .option-btn {
+        min-height: 84px;
+        padding: 18px 20px;
+        font-size: 18px;
+        line-height: 1.38;
+    }
+
+    .restart-btn,
+    #restart-btn,
+    .start-btn,
+    #start-btn,
+    .retry-btn,
+    #retry-btn,
+    .replay-btn,
+    #replay-btn,
+    .reset-btn,
+    #reset-btn {
+        width: min(100%, 320px);
+    }
+
+    .note-buttons,
+    .note-button-container,
+    .result-note-buttons,
+    #note-buttons,
+    #note-button-container,
+    #result-note-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* =========================================================
+   18. 모바일 화면 보정
+   ========================================================= */
+@media (max-width: 520px) {
+    /*
+       모바일에서 결과 메인 문구를 확실히 줄입니다.
+       이미지에서 문제가 됐던 "60초 동안 7문제를 맞혔습니다!" 문구가
+       더 이상 과하게 커지지 않도록 제한합니다.
+    */
+    .result-container > h1,
+    .result-container > h2,
+    .result-container > h3,
+    #result-container > h1,
+    #result-container > h2,
+    #result-container > h3,
+    .result-box > h1,
+    .result-box > h2,
+    .result-box > h3,
+    #result-box > h1,
+    #result-box > h2,
+    #result-box > h3,
+    .result-screen > h1,
+    .result-screen > h2,
+    .result-screen > h3,
+    #result-screen > h1,
+    #result-screen > h2,
+    #result-screen > h3,
+    .card > h1:not(.quiz-title),
+    .card > h2:not(.quiz-title),
+    .card > h3:not(.quiz-title) {
+        font-size: clamp(23px, 6.1vw, 28px) !important;
+        line-height: 1.24 !important;
+        letter-spacing: -0.7px !important;
+        margin: 8px 0 12px !important;
+    }
+
+    /*
+       모바일에서도 숫자 7은 무조건 같은 크기입니다.
+    */
+    .result-container > h1 *,
+    .result-container > h2 *,
+    .result-container > h3 *,
+    #result-container > h1 *,
+    #result-container > h2 *,
+    #result-container > h3 *,
+    .result-box > h1 *,
+    .result-box > h2 *,
+    .result-box > h3 *,
+    #result-box > h1 *,
+    #result-box > h2 *,
+    #result-box > h3 *,
+    .result-screen > h1 *,
+    .result-screen > h2 *,
+    .result-screen > h3 *,
+    #result-screen > h1 *,
+    #result-screen > h2 *,
+    #result-screen > h3 *,
+    .card > h1:not(.quiz-title) *,
+    .card > h2:not(.quiz-title) *,
+    .card > h3:not(.quiz-title) * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        vertical-align: baseline !important;
+        transform: none !important;
+    }
+}
+
+
+/* =========================================================
+   19. 작은 모바일 화면 보정
+   ========================================================= */
+@media (max-width: 360px) {
+    body {
+        padding: 14px;
+    }
+
+    .quiz-title {
+        margin-bottom: 14px;
+        font-size: 26px;
+    }
+
+    .status-container {
+        gap: 8px;
+    }
+
+    .timer-box,
+    .progress-text {
+        padding: 7px 10px;
+        font-size: 14px;
+    }
+
+    .card {
+        padding: 30px 18px 22px;
+        border-radius: 24px;
+    }
+
+    .pinyin-display {
+        min-height: 62px;
+        margin-bottom: 22px;
+    }
+
+    .option-btn {
+        min-height: 52px;
+        padding: 12px 14px;
+        font-size: 16px;
+    }
+
+    .result-container > h1,
+    .result-container > h2,
+    .result-container > h3,
+    #result-container > h1,
+    #result-container > h2,
+    #result-container > h3,
+    .result-box > h1,
+    .result-box > h2,
+    .result-box > h3,
+    #result-box > h1,
+    #result-box > h2,
+    #result-box > h3,
+    .result-screen > h1,
+    .result-screen > h2,
+    .result-screen > h3,
+    #result-screen > h1,
+    #result-screen > h2,
+    #result-screen > h3,
+    .card > h1:not(.quiz-title),
+    .card > h2:not(.quiz-title),
+    .card > h3:not(.quiz-title) {
+        font-size: 23px !important;
+        line-height: 1.25 !important;
+    }
+
+    .result-container p,
+    #result-container p,
+    .result-box p,
+    #result-box p,
+    .result-screen p,
+    #result-screen p,
+    #result-text,
+    .result-text,
+    #score-text,
+    .score-text,
+    #final-message,
+    .final-message,
+    #result-message,
+    .result-message {
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+    }
+
+    .restart-btn,
+    #restart-btn,
+    .start-btn,
+    #start-btn,
+    .retry-btn,
+    #retry-btn,
+    .replay-btn,
+    #replay-btn,
+    .reset-btn,
+    #reset-btn {
+        min-height: 56px;
+        padding: 15px 20px;
+        font-size: 17px;
+    }
+}
+
+
+/* =========================================================
+   20. 모바일에서 오답노트 / 정답노트 보정
+   ========================================================= */
+@media (max-width: 420px) {
+    .wrong-note-btn,
+    #wrong-note-btn,
+    .incorrect-note-btn,
+    #incorrect-note-btn,
+    .wrong-list-btn,
+    #wrong-list-btn,
+    .mistake-note-btn,
+    #mistake-note-btn,
+    .mistake-list-btn,
+    #mistake-list-btn,
+    .correct-note-btn,
+    #correct-note-btn,
+    .answer-note-btn,
+    #answer-note-btn,
+    .correct-list-btn,
+    #correct-list-btn,
+    .answer-list-btn,
+    #answer-list-btn {
+        width: 100% !important;
+        min-height: 64px !important;
+        font-size: 18px !important;
+        border-radius: 18px !important;
+    }
+
+    .wrong-note,
+    #wrong-note,
+    .incorrect-note,
+    #incorrect-note,
+    .wrong-list,
+    #wrong-list,
+    .mistake-note,
+    #mistake-note,
+    .mistake-list,
+    #mistake-list,
+    .correct-note,
+    #correct-note,
+    .answer-note,
+    #answer-note,
+    .correct-list,
+    #correct-list,
+    .answer-list,
+    #answer-list {
+        padding: 16px 14px;
+        border-radius: 18px;
+    }
+}
+
+
+/* =========================================================
+   21. 최후 방어 코드
+   ---------------------------------------------------------
+   만약 JS가 결과 문구 숫자에 small, sup, span, i 같은 태그를 섞어도
+   제목 안에서는 절대 혼자 작아지지 않게 마지막에 한 번 더 고정합니다.
+   ========================================================= */
+.card > h1:not(.quiz-title) span,
+.card > h1:not(.quiz-title) strong,
+.card > h1:not(.quiz-title) b,
+.card > h1:not(.quiz-title) em,
+.card > h1:not(.quiz-title) small,
+.card > h1:not(.quiz-title) sup,
+.card > h1:not(.quiz-title) i,
+.card > h2:not(.quiz-title) span,
+.card > h2:not(.quiz-title) strong,
+.card > h2:not(.quiz-title) b,
+.card > h2:not(.quiz-title) em,
+.card > h2:not(.quiz-title) small,
+.card > h2:not(.quiz-title) sup,
+.card > h2:not(.quiz-title) i,
+.card > h3:not(.quiz-title) span,
+.card > h3:not(.quiz-title) strong,
+.card > h3:not(.quiz-title) b,
+.card > h3:not(.quiz-title) em,
+.card > h3:not(.quiz-title) small,
+.card > h3:not(.quiz-title) sup,
+.card > h3:not(.quiz-title) i {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
+    color: inherit !important;
+    vertical-align: baseline !important;
+    position: static !important;
+    top: auto !important;
+    transform: none !important;
+}
+
+
+/* =========================================================
+   22. 애니메이션 최소화 접근성
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+}
+/* =========================================================
+    23. FINAL RESULT TEXT FIX
+   ---------------------------------------------------------
+   실제 원인:
+   결과 화면의 "60초 동안 8문제를 맞혔습니다!" 문구 또는 숫자에
+   .score / #score / .final-score 같은 클래스가 붙어 있음.
+
+   기존 CSS에서 .score를 큰 점수 숫자용으로 잡아버려서
+   결과 문장이 비정상적으로 커지고,
+   숫자만 따로 작거나 어긋나 보이는 문제가 발생함.
+
+   해결:
+   1. 결과 카드 안의 .score 문구를 일반 결과 문장 크기로 강제 조정
+   2. 그 안의 숫자 span, strong, b, em, i 등을 모두 같은 크기로 통일
+   3. "맞혔습니다"가 이상하게 끊기지 않도록 폭과 줄바꿈 방식 보정
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   1. 결과 화면 상단 제목
+   예: "⏱️ 타임아웃! 게임 종료 ⏱️"
+   --------------------------------------------------------- */
+#result-card h1,
+#result-card h2,
+#result-card h3,
+.result-card h1,
+.result-card h2,
+.result-card h3,
+.result-container h1,
+.result-container h2,
+.result-container h3,
+#result-container h1,
+#result-container h2,
+#result-container h3,
+.card.result h1,
+.card.result h2,
+.card.result h3 {
+    font-size: clamp(24px, 5vw, 32px) !important;
+    line-height: 1.25 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.7px !important;
+    color: #9F2F2F !important;
+    margin: 10px 0 12px !important;
+    word-break: keep-all !important;
+}
+
+
+/* ---------------------------------------------------------
+   2. 핵심 수정:
+   결과 점수 문장 자체를 작게 조정
+
+   예:
+   "60초 동안 8문제를 맞혔습니다!"
+   --------------------------------------------------------- */
+#result-card .score,
+#result-card #score-text,
+#result-card .score-text,
+#result-card .final-score,
+#result-card #final-score,
+#result-card .result-score,
+#result-card #result-score,
+#result-card .result-summary,
+#result-card #result-summary,
+#result-card .result-main,
+#result-card #result-main,
+#result-card .result-main-text,
+#result-card #result-main-text,
+.result-card .score,
+.result-card #score-text,
+.result-card .score-text,
+.result-card .final-score,
+.result-card #final-score,
+.result-card .result-score,
+.result-card #result-score,
+.result-card .result-summary,
+.result-card #result-summary,
+.result-card .result-main,
+.result-card #result-main,
+.result-card .result-main-text,
+.result-card #result-main-text,
+.result-container .score,
+.result-container #score-text,
+.result-container .score-text,
+.result-container .final-score,
+.result-container #final-score,
+.result-container .result-score,
+.result-container #result-score,
+.result-container .result-summary,
+.result-container #result-summary,
+.result-container .result-main,
+.result-container #result-main,
+.result-container .result-main-text,
+.result-container #result-main-text,
+#result-container .score,
+#result-container #score-text,
+#result-container .score-text,
+#result-container .final-score,
+#result-container #final-score,
+#result-container .result-score,
+#result-container #result-score,
+#result-container .result-summary,
+#result-container #result-summary,
+#result-container .result-main,
+#result-container #result-main,
+#result-container .result-main-text,
+#result-container #result-main-text {
+    /*
+       기존처럼 40~60px로 커지지 않게 강제 제한합니다.
+       모바일에서는 약 22~25px,
+       PC에서도 최대 28px까지만 커집니다.
+    */
+    font-size: clamp(21px, 4.8vw, 28px) !important;
+    line-height: 1.32 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.6px !important;
+
+    color: #9F2F2F !important;
+
+    margin: 12px auto 10px !important;
+    padding: 0 !important;
+
+    /*
+       문장이 너무 넓게 퍼지거나 이상하게 끊기는 것을 방지합니다.
+    */
+    max-width: 100% !important;
+    width: 100% !important;
+
+    text-align: center !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+
+    display: block !important;
+}
+
+
+/* ---------------------------------------------------------
+   3. 숫자만 작아지는 문제 최종 해결
+
+   예:
+   <span id="score">8</span>
+   <span class="score">8</span>
+   <strong>8</strong>
+   <b>8</b>
+
+   위처럼 숫자가 어떤 태그로 감싸져 있어도
+   부모 문장과 같은 크기로 맞춥니다.
+   --------------------------------------------------------- */
+#result-card .score *,
+#result-card #score-text *,
+#result-card .score-text *,
+#result-card .final-score *,
+#result-card #final-score *,
+#result-card .result-score *,
+#result-card #result-score *,
+#result-card .result-summary *,
+#result-card #result-summary *,
+#result-card .result-main *,
+#result-card #result-main *,
+#result-card .result-main-text *,
+#result-card #result-main-text *,
+.result-card .score *,
+.result-card #score-text *,
+.result-card .score-text *,
+.result-card .final-score *,
+.result-card #final-score *,
+.result-card .result-score *,
+.result-card #result-score *,
+.result-card .result-summary *,
+.result-card #result-summary *,
+.result-card .result-main *,
+.result-card #result-main *,
+.result-card .result-main-text *,
+.result-card #result-main-text *,
+.result-container .score *,
+.result-container #score-text *,
+.result-container .score-text *,
+.result-container .final-score *,
+.result-container #final-score *,
+.result-container .result-score *,
+.result-container #result-score *,
+.result-container .result-summary *,
+.result-container #result-summary *,
+.result-container .result-main *,
+.result-container #result-main *,
+.result-container .result-main-text *,
+.result-container #result-main-text *,
+#result-container .score *,
+#result-container #score-text *,
+#result-container .score-text *,
+#result-container .final-score *,
+#result-container #final-score *,
+#result-container .result-score *,
+#result-container #result-score *,
+#result-container .result-summary *,
+#result-container #result-summary *,
+#result-container .result-main *,
+#result-container #result-main *,
+#result-container .result-main-text *,
+#result-container #result-main-text * {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
+    letter-spacing: inherit !important;
+    color: inherit !important;
+
+    vertical-align: baseline !important;
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+
+    display: inline !important;
+}
+
+
+/* ---------------------------------------------------------
+   4. 숫자가 id="score"로 따로 박힌 경우 직접 제압
+
+   현재 이미지에서 숫자 8만 작게 보이는 것으로 봐서
+   이 케이스일 가능성이 높습니다.
+   --------------------------------------------------------- */
+#result-card #score,
+#result-card .score-number,
+#result-card .correct-count,
+#result-card .answer-count,
+#result-card .count,
+.result-card #score,
+.result-card .score-number,
+.result-card .correct-count,
+.result-card .answer-count,
+.result-card .count,
+.result-container #score,
+.result-container .score-number,
+.result-container .correct-count,
+.result-container .answer-count,
+.result-container .count,
+#result-container #score,
+#result-container .score-number,
+#result-container .correct-count,
+#result-container .answer-count,
+#result-container .count {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
+    letter-spacing: inherit !important;
+    color: inherit !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    vertical-align: baseline !important;
+    display: inline !important;
+    position: static !important;
+    top: auto !important;
+    transform: none !important;
+}
+
+
+/* ---------------------------------------------------------
+   5. 결과 설명 문구
+   예: "종료 직전까지 총 9문제를 풀었습니다."
+   --------------------------------------------------------- */
+#result-card p,
+.result-card p,
+.result-container p,
+#result-container p {
+    font-size: clamp(14px, 3.4vw, 16px) !important;
+    line-height: 1.55 !important;
+    font-weight: 600 !important;
+    color: #5F5143 !important;
+    margin: 8px 0 18px !important;
+    word-break: keep-all !important;
+}
+
+
+/* ---------------------------------------------------------
+   6. 모바일에서 결과 점수 문구 추가 축소
+   --------------------------------------------------------- */
+@media (max-width: 520px) {
+    #result-card .score,
+    #result-card #score-text,
+    #result-card .score-text,
+    #result-card .final-score,
+    #result-card #final-score,
+    #result-card .result-score,
+    #result-card #result-score,
+    #result-card .result-summary,
+    #result-card #result-summary,
+    #result-card .result-main,
+    #result-card #result-main,
+    #result-card .result-main-text,
+    #result-card #result-main-text,
+    .result-card .score,
+    .result-card #score-text,
+    .result-card .score-text,
+    .result-card .final-score,
+    .result-card #final-score,
+    .result-card .result-score,
+    .result-card #result-score,
+    .result-card .result-summary,
+    .result-card #result-summary,
+    .result-card .result-main,
+    .result-card #result-main,
+    .result-card .result-main-text,
+    .result-card #result-main-text,
+    .result-container .score,
+    .result-container #score-text,
+    .result-container .score-text,
+    .result-container .final-score,
+    .result-container #final-score,
+    .result-container .result-score,
+    .result-container #result-score,
+    .result-container .result-summary,
+    .result-container #result-summary,
+    .result-container .result-main,
+    .result-container #result-main,
+    .result-container .result-main-text,
+    .result-container #result-main-text,
+    #result-container .score,
+    #result-container #score-text,
+    #result-container .score-text,
+    #result-container .final-score,
+    #result-container #final-score,
+    #result-container .result-score,
+    #result-container #result-score,
+    #result-container .result-summary,
+    #result-container #result-summary,
+    #result-container .result-main,
+    #result-container #result-main,
+    #result-container .result-main-text,
+    #result-container #result-main-text {
+        /*
+           이미지 기준 현재 너무 크므로 모바일에서는 확실히 22px대로 제한합니다.
+        */
+        font-size: clamp(20px, 5.1vw, 23px) !important;
+        line-height: 1.35 !important;
+        letter-spacing: -0.5px !important;
+        margin: 10px auto 8px !important;
+    }
+
+    #result-card h1,
+    #result-card h2,
+    #result-card h3,
+    .result-card h1,
+    .result-card h2,
+    .result-card h3,
+    .result-container h1,
+    .result-container h2,
+    .result-container h3,
+    #result-container h1,
+    #result-container h2,
+    #result-container h3 {
+        font-size: clamp(22px, 5.6vw, 27px) !important;
+        line-height: 1.25 !important;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   7. 아주 작은 화면 보정
+   --------------------------------------------------------- */
+@media (max-width: 380px) {
+    #result-card .score,
+    #result-card #score-text,
+    #result-card .score-text,
+    #result-card .final-score,
+    #result-card #final-score,
+    #result-card .result-score,
+    #result-card #result-score,
+    #result-card .result-summary,
+    #result-card #result-summary,
+    #result-card .result-main,
+    #result-card #result-main,
+    #result-card .result-main-text,
+    #result-card #result-main-text,
+    .result-card .score,
+    .result-card #score-text,
+    .result-card .score-text,
+    .result-card .final-score,
+    .result-card #final-score,
+    .result-card .result-score,
+    .result-card #result-score,
+    .result-card .result-summary,
+    .result-card #result-summary,
+    .result-card .result-main,
+    .result-card #result-main,
+    .result-card .result-main-text,
+    .result-card #result-main-text,
+    .result-container .score,
+    .result-container #score-text,
+    .result-container .score-text,
+    .result-container .final-score,
+    .result-container #final-score,
+    .result-container .result-score,
+    .result-container #result-score,
+    .result-container .result-summary,
+    .result-container #result-summary,
+    .result-container .result-main,
+    .result-container #result-main,
+    .result-container .result-main-text,
+    .result-container #result-main-text,
+    #result-container .score,
+    #result-container #score-text,
+    #result-container .score-text,
+    #result-container .final-score,
+    #result-container #final-score,
+    #result-container .result-score,
+    #result-container #result-score,
+    #result-container .result-summary,
+    #result-container #result-summary,
+    #result-container .result-main,
+    #result-container #result-main,
+    #result-container .result-main-text,
+    #result-container #result-main-text {
+        font-size: 20px !important;
+        line-height: 1.35 !important;
+    }
+}
+.info-accordion {
+    margin-top: 12px;
+    text-align: left;
+}
+
+.acc-toggle,
+.ui-btn-accordion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    background-color: var(--surface-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.acc-toggle:hover,
+.acc-toggle:focus-visible {
+    border-color: var(--primary);
+}
+
+.acc-toggle:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    outline-offset: 2px;
+}
+
+.acc-arrow {
+    flex: 0 0 auto;
+    transition: transform 0.28s ease;
+}
+
+.acc-toggle[aria-expanded="true"] .acc-arrow {
+    transform: rotate(180deg);
+}
+
+.acc-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    margin: 0;
+    color: var(--text-sub);
+    font-size: 14.5px;
+    line-height: 1.7;
+    transition: grid-template-rows 0.32s ease, opacity 0.2s ease, margin 0.32s ease;
+}
+
+.acc-panel.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin: 6px 0 2px;
+}
+
+.acc-panel-inner {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 16px;
+    background-color: var(--surface);
+    border-radius: var(--radius-md);
+    transition: padding 0.32s ease;
+}
+
+.acc-panel.open .acc-panel-inner {
+    padding: 12px 16px 15px;
+}
+
+.acc-panel p {
+    margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .acc-panel,
+    .acc-panel-inner,
+    .acc-arrow {
+        transition: none;
+    }
+}
+.pinyin-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.speak-btn,
+.ui-btn-speak {
+    padding: 6px 16px;
+    font-size: 20px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary, #8B3A3A), var(--primary-dark, #6B2C2C));
+    color: #fff;
+    cursor: pointer;
+    box-shadow: var(--shadow-button, 0 3px 8px rgba(0,0,0,0.15));
+    transition: transform 0.15s ease;
+}
+
+.speak-btn:hover,
+.ui-btn-speak:hover { transform: scale(1.08); }
+.speak-btn:active,
+.ui-btn-speak:active { transform: scale(0.92); }
+
+.speak-btn.sound-on,
+.ui-btn-speak.sound-on {
+    background: linear-gradient(135deg, var(--primary, #8B3A3A), var(--primary-dark, #6B2C2C));
+    color: #fff;
+}
+
+.speak-btn.sound-off,
+.ui-btn-speak.sound-off {
+    background: linear-gradient(135deg, #D8D2C7, #BFB7AA);
+    color: #5D5346;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+
+/* 문제 단어 옆 음성 버튼은 내용보다 튀지 않는 학습 보조 기능으로 표현합니다. */
+#quiz-card #speak-btn,
+#quiz-card #speak-btn.sound-on {
+    background: #F4EBDD;
+    border: 1px solid #D9C9AE;
+    color: #486B57;
+    box-shadow: 0 2px 6px rgba(72, 107, 87, 0.12);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+#quiz-card #speak-btn:hover {
+    background: #E7F0E8;
+    border-color: #A9BEAE;
+    box-shadow: 0 3px 8px rgba(72, 107, 87, 0.18);
+}
+
+#quiz-card #speak-btn:focus-visible {
+    outline: 3px solid rgba(72, 107, 87, 0.3);
+    outline-offset: 3px;
+}
+
+#quiz-card #speak-btn.sound-off {
+    background: #EEEAE2;
+    border-color: #D5CFC4;
+    color: #756E63;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+}
+
+/* ===== 시작 화면 ===== */
+.start-screen {
+    text-align: center;
+    padding: 50px 24px;
+}
+
+.start-emoji {
+    font-size: 56px;
+    margin-bottom: 12px;
+    animation: floatEmoji 2.2s ease-in-out infinite;
+}
+
+@keyframes floatEmoji {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+.start-title {
+    font-size: 24px;
+    font-weight: 800;
+    /* h2 -> h1 로 바꾸면서 브라우저 기본 margin-block-start 가
+       0.83em(h2) 에서 0.67em(h1) 으로 줄어듭니다.
+       기존 여백을 픽셀 단위로 그대로 유지하려고 h2 기본값을 명시합니다. */
+    margin-top: 0.83em;
+    margin-bottom: 6px;
+    color: var(--primary-dark, #6B2C2C);
+}
+
+/* 퀴즈 카드 안의 섹션·스테이지은 병음을 방해하지 않는 작은 보조 문구입니다. */
+.quiz-topic-inline {
+    min-height: 18px;
+    margin: -14px 0 10px;
+    color: #8A7D6B;
+    font-size: clamp(14px, 3.4vw, 17px);
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.1px;
+}
+
+.quiz-topic-context {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.quiz-topic-separator {
+    margin: 0 1px;
+    color: #B2A694;
+}
+
+.start-subtitle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 3px 0 25px;
+    padding: 5px 13px;
+    border: 1px solid rgba(107, 44, 44, 0.16);
+    border-radius: 999px;
+    background: #fffaf3;
+    box-shadow: 0 7px 16px rgba(107, 44, 44, 0.1);
+    color: var(--primary-dark, #6B2C2C);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.start-subtitle[hidden] {
+    display: none;
+}
+
+.global-language-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0 18px;
+    text-align: left;
+}
+
+.global-language-field {
+    display: grid;
+    gap: 6px;
+    color: #555;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.global-language-field[hidden] {
+    display: none;
+}
+
+.global-language-field select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #dfe5ec;
+    border-radius: 12px;
+    background: #fff;
+    color: #20252b;
+    font: inherit;
+    font-size: 0.94rem;
+    cursor: pointer;
+}
+
+.global-language-field select:focus-visible {
+    outline: 3px solid rgba(52, 152, 219, 0.22);
+    border-color: #3498db;
+}
+
+#chinese-reading-field {
+    grid-column: 1 / -1;
+}
+
+.learning-records-manager {
+    margin-top: 24px;
+    padding: 18px;
+    border: 1px solid rgba(126, 36, 36, 0.16);
+    border-radius: 20px;
+    background: linear-gradient(145deg, #fffaf3 0%, #fff5e8 100%);
+    box-shadow: 0 10px 24px rgba(107, 44, 44, 0.08);
+    text-align: left;
+}
+
+.learning-records-manager[hidden] {
+    display: none;
+}
+
+.learning-records-heading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.learning-records-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.learning-records-heading h3 {
+    margin: 0;
+    color: var(--primary-dark, #6B2C2C);
+    font-size: 1.08rem;
+    font-weight: 900;
+}
+
+.learning-records-description {
+    margin: 8px 0 14px;
+    color: #746858;
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.55;
+    text-align: center;
+}
+
+.cloud-backup-section {
+    margin-bottom: 12px;
+    padding: 14px;
+    border: 1px solid rgba(27, 111, 79, 0.24);
+    border-radius: 16px;
+    background: rgba(244, 252, 247, 0.92);
+}
+
+.cloud-backup-section[hidden] {
+    display: none;
+}
+
+.cloud-backup-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #174d39;
+    font-size: 0.92rem;
+}
+
+.cloud-backup-private {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #e3f4ea;
+    color: #287255;
+    font-size: 0.7rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.cloud-backup-status {
+    min-height: 1.3em;
+    margin: 9px 0 12px;
+    color: #4f665c;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.cloud-backup-primary-btn {
+    width: 100%;
+    border: 1px solid #236b50;
+    background: #236b50;
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(35, 107, 80, 0.18);
+}
+
+.cloud-backup-secondary-btn {
+    border: 1px solid rgba(35, 107, 80, 0.35);
+    background: #fff;
+    color: #174d39;
+}
+
+.cloud-backup-delete-btn {
+    grid-column: 1 / -1;
+    border: 1px solid rgba(143, 38, 43, 0.28);
+    background: transparent;
+    color: #8f262b;
+}
+
+.cloud-backup-restore-always {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* 성과 기반 백업은 학습 화면을 방해하지 않는 한 줄 상태 표시로 유지합니다. */
+.learning-records-manager {
+    margin-top: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    box-shadow: none;
+}
+
+.cloud-backup-section {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+}
+
+.cloud-backup-compact-button {
+    width: 100%;
+    min-height: 68px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 14px;
+    border: 1px solid rgba(84, 62, 35, 0.14);
+    border-radius: 16px;
+    background: rgba(255, 252, 246, 0.78);
+    color: #2b2118;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 5px 14px rgba(84, 62, 35, 0.05);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cloud-backup-compact-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: rgba(35, 107, 80, 0.3);
+    box-shadow: 0 8px 18px rgba(84, 62, 35, 0.08);
+}
+
+.cloud-backup-compact-button:focus-visible {
+    outline: 3px solid rgba(35, 107, 80, 0.18);
+    outline-offset: 2px;
+}
+
+.cloud-backup-compact-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.cloud-backup-compact-icon {
+    font-size: 1.32rem;
+    line-height: 1;
+}
+
+.cloud-backup-compact-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.cloud-backup-compact-copy strong {
+    color: #5f2626;
+    font-size: 0.92rem;
+    font-weight: 900;
+}
+
+.cloud-backup-status {
+    min-height: 0;
+    margin: 0;
+    color: #746858;
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.cloud-backup-manage-label {
+    color: #386c58;
+    font-size: 0.76rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.cloud-backup-manage-card .cloud-backup-private {
+    display: inline-flex;
+    margin: 0 auto 3px;
+}
+
+.cloud-backup-manage-status {
+    min-height: 1.4em;
+    margin-bottom: 10px !important;
+}
+
+.cloud-backup-manage-actions {
+    margin-top: 13px;
+}
+
+.cloud-backup-manage-card .cloud-backup-delete-btn,
+.cloud-backup-manage-close {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.cloud-backup-toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 12000;
+    width: max-content;
+    max-width: min(88vw, 420px);
+    padding: 11px 16px;
+    border: 1px solid rgba(35, 107, 80, 0.28);
+    border-radius: 999px;
+    background: rgba(23, 77, 57, 0.96);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 850;
+    line-height: 1.35;
+    text-align: center;
+    box-shadow: 0 12px 34px rgba(23, 77, 57, 0.24);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 12px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.cloud-backup-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.learning-records-btn {
+    min-height: 46px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 850;
+    line-height: 1.3;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.learning-records-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(126, 36, 36, 0.14);
+}
+
+.learning-records-btn:focus-visible {
+    outline: 3px solid rgba(52, 152, 219, 0.22);
+    outline-offset: 2px;
+}
+
+.learning-records-btn:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+
+.cloud-backup-dialog {
+    width: min(92vw, 520px);
+    max-height: 90vh;
+    padding: 0;
+    border: 0;
+    border-radius: 22px;
+    background: transparent;
+    color: #2a241e;
+    overflow: auto;
+}
+
+.cloud-backup-dialog::backdrop {
+    background: rgba(23, 20, 17, 0.64);
+    backdrop-filter: blur(3px);
+}
+
+.cloud-backup-dialog-card {
+    margin: 0;
+    padding: 24px;
+    border: 1px solid rgba(126, 36, 36, 0.14);
+    border-radius: 22px;
+    background: #fffaf3;
+    box-shadow: 0 24px 70px rgba(28, 20, 14, 0.24);
+    text-align: center;
+}
+
+.cloud-backup-dialog-card h3 {
+    margin: 0 0 9px;
+    color: #5f2626;
+    font-size: 1.16rem;
+}
+
+.cloud-backup-dialog-card > p {
+    margin: 0 0 14px;
+    color: #6d6255;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.cloud-backup-qr {
+    width: min(62vw, 230px);
+    margin: 12px auto;
+    padding: 10px;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.cloud-backup-qr:empty {
+    display: none;
+}
+
+.cloud-backup-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.cloud-backup-recovery-code {
+    display: block;
+    padding: 12px 9px;
+    border: 1px dashed rgba(35, 107, 80, 0.46);
+    border-radius: 12px;
+    background: #f2faf5;
+    color: #173e30;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: clamp(0.76rem, 3.1vw, 0.96rem);
+    font-weight: 900;
+    letter-spacing: 0.045em;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.cloud-backup-dialog-card .cloud-backup-warning {
+    margin-top: 11px;
+    color: #8a3b3e;
+    font-size: 0.74rem;
+}
+
+.cloud-backup-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.cloud-backup-dialog-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+.cloud-backup-code-field {
+    display: block;
+    text-align: left;
+}
+
+.cloud-backup-code-field span {
+    display: block;
+    margin-bottom: 7px;
+    color: #554b40;
+    font-size: 0.84rem;
+    font-weight: 850;
+}
+
+.cloud-backup-code-field input {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid rgba(35, 107, 80, 0.36);
+    border-radius: 12px;
+    background: #fff;
+    color: #20252b;
+    font: 800 0.88rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    text-transform: uppercase;
+}
+
+.cloud-backup-code-field input:focus-visible {
+    outline: 3px solid rgba(35, 107, 80, 0.18);
+    border-color: #236b50;
+}
+
+html[dir="rtl"] .global-language-panel,
+html[dir="rtl"] .global-language-field {
+    text-align: right;
+}
+
+@media (max-width: 420px) {
+    .global-language-panel {
+        grid-template-columns: 1fr;
+    }
+
+    #chinese-reading-field {
+        grid-column: auto;
+    }
+
+    .cloud-backup-dialog-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .cloud-backup-delete-btn,
+    .cloud-backup-dialog-actions > :last-child:nth-child(odd) {
+        grid-column: auto;
+    }
+
+    .cloud-backup-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+.start-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #6b6b6b;
+    margin-bottom: 30px;
+}
+
+.start-btn {
+    display: inline-block;
+    padding: 16px 48px;
+    font-size: 19px;
+    font-weight: 800;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary, #8B3A3A), var(--primary-dark, #6B2C2C));
+    box-shadow: 0 8px 20px rgba(139, 58, 58, 0.35);
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    animation: pulseBtn 1.8s ease-in-out infinite;
+}
+
+.start-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 10px 24px rgba(139, 58, 58, 0.45);
+}
+
+.start-btn:active {
+    transform: scale(0.95);
+}
+
+@keyframes pulseBtn {
+    0%, 100% { box-shadow: 0 8px 20px rgba(139, 58, 58, 0.35); }
+    50% { box-shadow: 0 8px 28px rgba(139, 58, 58, 0.55); }
+}
+
+.final-score-simple {
+    font-size: 27px;
+    font-weight: 800;
+    color: #D32F2F;
+    text-align: center;
+    margin: 16px 0 24px 0;
+}
+
+.result-summary-inline {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    line-height: 1.6 !important;
+    margin: 16px 0 24px 0 !important;
+    text-align: center !important;
+    color: #444 !important;
+}
+
+.result-score-value {
+    display: inline !important;
+    font-size: 18px !important;
+    margin: 0 !important;
+}
+
+#result-card .result-summary-inline #score-text,
+#result-card .result-summary-inline #wrong-count-text,
+#result-card .result-summary-inline #total-time-text,
+.result-card .result-summary-inline #score-text,
+.result-card .result-summary-inline #wrong-count-text,
+.result-card .result-summary-inline #total-time-text {
+    display: inline !important;
+    width: auto !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    text-align: inherit !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+}
+
+.result-time-line {
+    display: inline-block;
+    margin-top: 6px;
+    white-space: nowrap;
+}
+
+.result-score-correct {
+    font-weight: 800 !important;
+    color: #2E7D32 !important;
+}
+
+.result-score-wrong {
+    font-weight: 800 !important;
+    color: #D32F2F !important;
+}
+
+.result-score-time {
+    color: #444 !important;
+}
+
+.correct-title {
+    margin-top: 28px !important;
+}
+/* ===== "60초 타임어택" 제목 위아래로 천천히 흔들림 ===== */
+.start-title-float {
+    animation: floatTitle 2.6s ease-in-out infinite;
+}
+
+@keyframes floatTitle {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+/* =========================================================
+    24. 섹션 선택 화면 스타일
+   - 기존 .card, .start-btn 등의 톤(버건디+베이지)을 그대로 계승
+   - 3열 그리드 버튼으로 모바일에서도 한눈에 보기 좋게 구성
+   ========================================================= */
+
+.section-select-screen {
+    position: relative;
+    isolation: isolate;
+    text-align: center;
+    padding: 36px 20px 28px;
+}
+
+.pwa-install-button {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 24px;
+    max-width: calc(100% - 20px);
+    padding: 3px 7px;
+    border: 1px solid rgba(35, 107, 80, 0.58);
+    border-radius: 999px;
+    background: rgba(239, 248, 243, 0.94);
+    color: #1d5b44;
+    font: inherit;
+    font-size: clamp(10px, 2.4vw, 11.5px);
+    font-weight: 850;
+    line-height: 1.1;
+    white-space: nowrap;
+    box-shadow: 0 3px 8px rgba(35, 107, 80, 0.1);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pwa-install-button[hidden] {
+    display: none;
+}
+
+.pwa-install-button:hover {
+    transform: translateY(-1px);
+    background: #e5f4eb;
+    box-shadow: 0 5px 11px rgba(35, 107, 80, 0.15);
+}
+
+.pwa-install-button:focus-visible {
+    outline: 3px solid rgba(35, 107, 80, 0.18);
+    outline-offset: 2px;
+}
+
+.pwa-install-icon {
+    font-size: 0.92em;
+    line-height: 1;
+}
+
+.pwa-install-help-card {
+    max-width: 440px;
+}
+
+.pwa-install-steps {
+    display: grid;
+    gap: 9px;
+    margin: 15px 0 4px;
+    padding: 0;
+    list-style: none;
+    color: #554b40;
+    font-size: 0.86rem;
+    font-weight: 750;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.pwa-install-steps li {
+    padding: 10px 12px;
+    border: 1px solid rgba(35, 107, 80, 0.17);
+    border-radius: 12px;
+    background: rgba(239, 248, 243, 0.62);
+}
+
+html[dir="rtl"] .pwa-install-steps {
+    text-align: right;
+}
+
+.section-select-screen .start-subtitle,
+.section-select-screen .daily-quiz-banner,
+.section-select-screen .section-grid,
+.section-select-screen .selected-section-banner,
+.section-select-screen .start-desc,
+.section-select-screen .back-btn {
+    position: relative;
+    z-index: 1;
+}
+
+.daily-quiz-banner {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 82px;
+    margin: 16px 0 8px;
+    padding: 14px 16px;
+    border: 1px solid rgba(62, 133, 115, 0.28);
+    border-radius: var(--radius-md, 18px);
+    background: linear-gradient(135deg, #EFF9F5 0%, #EEF3FF 100%);
+    color: #244E45;
+    text-align: left;
+    box-shadow: 0 9px 20px rgba(60, 106, 96, 0.10);
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.daily-quiz-banner > :not(.daily-quiz-confetti) {
+    position: relative;
+    z-index: 2;
+}
+
+.daily-quiz-confetti {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.daily-quiz-banner[hidden] {
+    display: none;
+}
+
+.daily-quiz-banner:hover {
+    transform: translateY(-2px);
+    border-color: rgba(35, 107, 80, 0.48);
+    box-shadow: 0 12px 24px rgba(60, 106, 96, 0.15);
+}
+
+.daily-quiz-banner:active {
+    transform: scale(0.99);
+}
+
+.daily-quiz-banner:focus-visible {
+    outline: 3px solid rgba(35, 107, 80, 0.20);
+    outline-offset: 2px;
+}
+
+.daily-quiz-banner.is-cleared {
+    border-color: rgba(47, 136, 73, 0.38);
+    background: linear-gradient(135deg, #EAF8ED 0%, #F2FBF5 100%);
+    color: #23653A;
+}
+
+.daily-quiz-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+}
+
+.daily-quiz-icon-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 5px 7px rgba(44, 97, 82, 0.18));
+    transform-origin: 50% 60%;
+    animation: dailyQuizSparkFloat 1.9s ease-in-out infinite;
+}
+
+@keyframes dailyQuizSparkFloat {
+    0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
+    45% { transform: translateY(-5px) rotate(3deg) scale(1.08); }
+    70% { transform: translateY(-1px) rotate(-1deg) scale(0.98); }
+}
+
+.daily-quiz-copy {
+    display: grid;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 3px;
+}
+
+.daily-quiz-copy strong {
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.25;
+    color: inherit;
+}
+
+.daily-quiz-copy > span {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-sub, #746858);
+}
+
+.daily-quiz-status {
+    flex: 0 0 auto;
+    max-width: 42%;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: inherit;
+    font-size: 11px;
+    font-weight: 850;
+    line-height: 1.25;
+    text-align: center;
+}
+
+html[dir="rtl"] .daily-quiz-banner {
+    text-align: right;
+}
+
+@media (max-width: 420px) {
+    .daily-quiz-banner {
+        gap: 9px;
+        min-height: 76px;
+        padding: 12px;
+    }
+
+    .daily-quiz-icon {
+        width: 33px;
+        height: 33px;
+    }
+
+    .daily-quiz-copy strong {
+        font-size: 16px;
+    }
+
+    .daily-quiz-copy > span {
+        font-size: 12px;
+    }
+
+    .daily-quiz-status {
+        max-width: 38%;
+        padding: 5px 7px;
+        font-size: 10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .daily-quiz-icon-image {
+        animation: none;
+    }
+}
+
+.selected-section-banner {
+    margin: 6px 0 10px;
+}
+
+.section-grid-error {
+    grid-column: 1 / -1;
+    color: #8B302C;
+    font-weight: 700;
+}
+
+.selected-section-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid rgba(159, 47, 47, 0.22);
+    border-radius: var(--radius-pill, 999px);
+    background: linear-gradient(180deg, #FFF6EE 0%, #FFFDF8 100%);
+    box-shadow: 0 8px 18px rgba(159, 47, 47, 0.12);
+}
+
+.selected-section-emoji {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.selected-section-text {
+    font-size: 18px;
+    line-height: 1.2;
+    font-weight: 900;
+    color: var(--primary, #9F2F2F);
+    letter-spacing: -0.2px;
+}
+
+.section-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: minmax(78px, auto);
+    gap: 10px;
+    margin-top: 20px;
+    margin-bottom: 18px;
+}
+
+/* "전체 랜덤" 버튼은 항상 가로 전체를 차지하도록 */
+.section-btn-all {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--primary, #9F2F2F), var(--primary-dark, #7E2424)) !important;
+    color: #FFFDF8 !important;
+    border: none !important;
+}
+
+.section-btn-all .section-count {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.85;
+    margin-left: 4px;
+}
+
+.section-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    min-height: 78px;
+    padding: 12px 8px;
+
+    border: 1px solid var(--border-soft, rgba(84, 62, 35, 0.12));
+    border-radius: var(--radius-md, 18px);
+
+    background: linear-gradient(180deg, #FFFDF8 0%, #FBF4E8 100%);
+    color: var(--text-main, #2B2118);
+
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
+    word-break: keep-all;
+
+    cursor: pointer;
+
+    box-shadow: var(--shadow-button, 0 8px 18px rgba(84, 62, 35, 0.08));
+
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.completed-progress-btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.completed-progress-btn > :not(.progress-complete-confetti) {
+    position: relative;
+    z-index: 2;
+}
+
+.progress-complete-confetti {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.section-emoji {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.section-emoji.is-celebrating {
+    animation: completedProgressEmojiBounce 720ms cubic-bezier(0.22, 0.82, 0.3, 1);
+}
+
+@keyframes completedProgressEmojiBounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    32% { transform: translateY(-7px) scale(1.18) rotate(-5deg); }
+    58% { transform: translateY(1px) scale(0.96) rotate(3deg); }
+    78% { transform: translateY(-3px) scale(1.07); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section-emoji.is-celebrating { animation: none; }
+}
+
+.section-label {
+    font: inherit;
+    line-height: inherit;
+}
+
+.section-progress-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #FFF0DA;
+    color: #A65E18;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.section-progress-badge.is-complete {
+    background: #E7F6EA;
+    color: #2F8849;
+}
+
+.stage-title {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.stage-select-btn {
+    min-height: 100px;
+    gap: 6px;
+    padding: 13px 8px 12px;
+}
+
+.stage-select-btn:hover .stage-select-emoji {
+    transform: translateY(-2px) scale(1.08);
+}
+
+.stage-select-emoji {
+    font-size: 27px;
+    filter: drop-shadow(0 3px 4px rgba(84, 62, 35, 0.12));
+    transition: transform 0.16s ease;
+}
+
+.stage-select-btn .section-progress-badge {
+    margin-top: 1px;
+}
+
+.stage-school-label {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text-sub, #746858);
+}
+
+@media (hover: hover) {
+    .section-btn:hover {
+        transform: translateY(-2px);
+        border-color: rgba(159, 47, 47, 0.28);
+        box-shadow: 0 12px 24px rgba(84, 62, 35, 0.12);
+    }
+}
+
+.section-btn:active {
+    transform: translateY(0) scale(0.97);
+}
+
+/* 섹션 선택 화면의 "뒤로가기" 버튼 */
+.back-btn,
+.ui-btn-back {
+    width: min(100%, 260px);
+    min-height: 48px;
+    margin-top: 6px;
+    padding: 12px 20px;
+
+    border: 1px solid var(--border-soft, rgba(84, 62, 35, 0.15));
+    border-radius: var(--radius-pill, 999px);
+
+    background: transparent;
+    color: var(--text-sub, #746858);
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+
+.back-btn:hover,
+.ui-btn-back:hover {
+    background: rgba(84, 62, 35, 0.06);
+}
+
+/* 결과 화면의 "다른 섹션 선택하기" 버튼 (카톡 버튼과 겹치지 않게 은은한 톤으로) */
+
+/* 태블릿/PC에서는 3열로 넓게 */
+@media (min-width: 520px) {
+    .section-grid {
+        grid-template-columns: repeat(3, 1fr);
+        grid-auto-rows: minmax(78px, auto);
+    }
+}
+/* =========================================================
+    25. 오답노트/정답노트 항목 유틸 스타일
+   ---------------------------------------------------------
+   문제 원인: script.js가 만드는 <div class="wrong-item">에 대해
+   지금까지 CSS가 단 한 줄도 없어서, 브라우저 기본값(스타일 없음)으로
+   표시되며 항목들이 뭉쳐 보이는 문제가 있었습니다.
+   이 블록을 추가하면 정답노트/오답노트가 완전히 동일한 규칙을 쓰므로
+   앞으로는 100% 똑같은 모양으로만 나옵니다.
+   ========================================================= */
+
+/* 노트 리스트 전체를 왼쪽 정렬로 (body의 text-align:center 상속 차단) */
+#wrong-list,
+#correct-list {
+    text-align: left;
+}
+
+/* 맨 마지막 항목은 구분선 제거 (깔끔하게 마무리) */
+.wrong-item:last-child {
+    border-bottom: none;
+    padding-bottom: 4px;
+}
+
+/* 항목 안의 🔊 발음 듣기 버튼 위치 미세조정 */
+.wrong-item .note-speak-btn {
+    vertical-align: middle;
+}
+/* =========================================================
+    26. 퀴즈 문제 한자/병음 레이아웃
+   ---------------------------------------------------------
+   - 발음을 듣고 뜻을 맞히는 것이 핵심이므로 병음은 그대로 크게 유지
+   - 한자는 他/她/它 같은 동음이의어 구분용 "보조 정보"이므로
+     확실히 작고 옅은 색으로 처리해 시선을 뺏지 않게 함
+   ========================================================= */
+
+/* 한자 뱃지와 병음 사이 간격을 더 좁혀서 하나의 세트처럼 보이게 */
+.pinyin-display {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+
+/* =========================================================
+    27. 한자 힌트 뱃지 스타일
+   ---------------------------------------------------------
+   - 기존: 그냥 텍스트로 떠 있어서 병음과 연결감이 없고 어색해 보임
+   - 개선: 알약 모양 배경을 씌워 "보조 정보"라는 느낌을 명확히 주고,
+     상단의 카테고리 뱃지(기본 동사 등)와 톤을 맞춰 통일감을 줌
+   ========================================================= */
+.quiz-hanzi-hint {
+    display: inline-block;
+    font-size: clamp(13px, 3.2vw, 16px);
+    font-weight: 700;
+    color: #8A7259;
+    letter-spacing: 1px;
+    line-height: 1.3;
+    background-color: #F3ECE2;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 2px;
+}
+
+/* 병음 - 기존처럼 메인으로 크게 유지 */
+.quiz-pinyin-main {
+    font-family:
+        'Noto Sans SC',
+        'PingFang SC',
+        'Microsoft YaHei',
+        'Apple SD Gothic Neo',
+        sans-serif;
+    font-size: clamp(30px, 8.5vw, 50px);
+    font-weight: 700;
+    color: #7D1B12;
+    letter-spacing: 0.015em;
+    line-height: 1.12;
+    text-rendering: geometricPrecision;
+    font-kerning: normal;
+    font-feature-settings: 'kern' 1;
+    -webkit-font-smoothing: antialiased;
+}
+
+.quiz-pinyin-main .pinyin-focus {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #7D1B12;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    transform: none;
+    text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.52),
+        0 0 12px rgba(125, 27, 18, 0.24);
+    animation: none;
+}
+
+@keyframes focusWordPulse {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.08);
+        filter: brightness(1.16);
+    }
+    100% {
+        transform: scale(1.03);
+        filter: brightness(1);
+    }
+}
+/* =========================================================
+    28. 오답노트 / 정답노트 실제 사용 클래스 스타일
+   ---------------------------------------------------------
+   ★ 문제 원인: script.js와 index.html은 아래 클래스명을 사용하는데
+   기존 style.css에는 .wrong-note, #wrong-note 같은 "다른 이름"만
+   정의되어 있어서 스타일이 하나도 먹지 않았습니다.
+   실제로 쓰이는 이름(.wrong-answers-box 등)에 맞춰 새로 작성합니다.
+   ========================================================= */
+
+/* 오답노트 / 정답노트를 감싸는 큰 박스 */
+.wrong-answers-box,
+.correct-answers-box {
+    margin-top: 18px;
+    padding: 18px 16px;
+
+    border-radius: 20px;
+
+    text-align: left;
+}
+
+/* 오답노트 박스 (붉은 계열) */
+.wrong-answers-box {
+    border: 2px solid rgba(139, 48, 44, 0.34);
+    background: linear-gradient(180deg, #FFF6F4 0%, #F6DDD9 100%);
+    box-shadow:
+        0 12px 28px rgba(139, 48, 44, 0.13),
+        0 3px 8px rgba(84, 32, 32, 0.08);
+}
+
+/* 정답노트 박스 (초록 계열) */
+.correct-answers-box {
+    border: 2px solid rgba(63, 139, 104, 0.34);
+    background: linear-gradient(180deg, #F3FAF6 0%, #DCEFE4 100%);
+    box-shadow:
+        0 12px 28px rgba(63, 139, 104, 0.13),
+        0 3px 8px rgba(20, 70, 48, 0.08);
+}
+
+/* 노트 제목 ("❌ (오답노트)" / "⭕ (정답노트)") */
+.wrong-title,
+.correct-title {
+    margin: 0 0 12px;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.wrong-title {
+    color: var(--danger-dark);
+}
+
+.correct-title {
+    color: var(--success-strong);
+}
+
+.correct-item-pinyin {
+    color: #2E7D32;
+}
+
+.timeout-tag {
+    color: #B85A52;
+}
+
+/* 노트 안, 단어 하나하나를 담는 카드형 줄 */
+.wrong-item {
+    margin: 10px 0;
+    padding: 14px 14px;
+
+    text-align: left;
+
+    background-color: rgba(255, 255, 255, 0.78);
+    border-radius: 14px;
+
+    color: var(--text-main);
+
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.55;
+    word-break: keep-all;
+
+    box-shadow: 0 3px 8px rgba(84, 62, 35, 0.08);
+}
+
+/* 한자 + 병음 부분 (예: 下午 [xiàwǔ]) */
+.wrong-pinyin {
+    font-weight: 900;
+    color: var(--primary-dark);
+}
+
+/* 뜻 부분 (예: 오후) */
+.wrong-meaning {
+    font-weight: 900;
+    color: var(--text-main);
+}
+
+/* 예문 원문 */
+.wrong-example {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+.wrong-example .example-speak-btn {
+    width: 24px;
+    height: 24px;
+    margin-left: 6px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+/* 예문 병음 */
+.wrong-example-pinyin {
+    margin-top: 2px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 예문 번역(해석) */
+.wrong-example-trans {
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+/* 단어 설명(참고) 텍스트 */
+.word-note-text {
+    margin-top: 8px;
+
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.note-example-divider {
+    margin-top: 8px;
+    border-top: 1px dashed var(--border-soft);
+}
+
+/* 노트 안에서 개별 단어 발음을 다시 듣는 작은 스피커 버튼 */
+.note-speak-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 28px;
+    height: 28px;
+    margin-left: 4px;
+    padding: 0;
+
+    border: none;
+    border-radius: 999px;
+
+    background-color: rgba(159, 47, 47, 0.10);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+
+    transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.note-speak-btn:hover {
+    background-color: rgba(159, 47, 47, 0.18);
+    transform: scale(1.08);
+}
+
+.note-speak-btn:active {
+    transform: scale(0.94);
+}
+
+/* "🔁 똑같은 문제 다시 풀기" 버튼 스타일 (기존에 스타일이 없었을 경우를 대비) */
+.replay-same-btn,
+.ui-btn-replay {
+    width: 100%;
+    min-height: 54px;
+    padding: 14px 22px;
+
+    border: none;
+    border-radius: var(--radius-pill);
+
+    color: var(--text-main);
+    background: linear-gradient(180deg, #FFFDF8 0%, #FBF4E8 100%);
+    border: 1px solid rgba(84, 62, 35, 0.16);
+
+    font-size: 16px;
+    font-weight: 800;
+
+    cursor: pointer;
+    box-shadow: var(--shadow-button);
+
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.replay-same-btn:hover,
+.ui-btn-replay:hover {
+    transform: translateY(-2px);
+}
+
+.replay-same-btn:active,
+.ui-btn-replay:active {
+    transform: scale(0.985);
+}
+
+/* "🔄 다른 섹션 선택하기" 버튼 스타일 (기존에 스타일이 없었을 경우를 대비) */
+.section-change-btn,
+.ui-btn-section-change {
+    width: 100%;
+    min-height: 50px;
+    margin-top: 10px;
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: var(--radius-pill);
+
+    color: var(--text-sub);
+    background: transparent;
+    border: 1px solid rgba(84, 62, 35, 0.16);
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.section-change-btn:hover,
+.ui-btn-section-change:hover {
+    background-color: rgba(84, 62, 35, 0.05);
+}
+
+.section-badge-wrap {
+    text-align: center;
+}
+
+.section-badge {
+    display: inline-block;
+    margin: 0 auto 14px;
+    padding: 7px 20px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #7E2424;
+    background: #F4DEDA;
+    border-radius: 999px;
+    text-align: center;
+}
+
+.repeat-round-toast {
+    padding: 8px 18px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.result-share-btn {
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.4;
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.site-footer {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #9A8B76;
+    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px 16px;
+}
+
+.site-footer-link {
+    color: #9A8B76;
+    text-underline-offset: 3px;
+}
+
+.google-privacy-settings-button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+/* =========================================================
+    29. 병음 타이포 최종 통일
+   ---------------------------------------------------------
+   파일 내 중복 선언이 많아도, 아래 규칙이 마지막에 적용되도록 고정합니다.
+   ========================================================= */
+#pinyin,
+.quiz-pinyin-main,
+.wrong-pinyin,
+.wrong-example-pinyin {
+    font-family:
+        'Noto Sans SC',
+        'PingFang SC',
+        'Microsoft YaHei',
+        'Apple SD Gothic Neo',
+        sans-serif;
+    text-rendering: geometricPrecision;
+    font-kerning: normal;
+    font-feature-settings: 'kern' 1;
+    -webkit-font-smoothing: antialiased;
+}
+
+.quiz-pinyin-main,
+.wrong-pinyin {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.quiz-pinyin-main {
+    color: #7D1B12;
+}
+
+.wrong-example-pinyin {
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* 오답 다시풀기와 내 단어장도 일반 섹션 카드와 같은 크기와 글자 크기를 사용합니다. */
+.section-btn.special-section-btn {
+    width: 100%;
+    height: 100%;
+}
+.section-btn.wrong-bank-section-btn,
+.section-btn.wordbook-section-btn {
+    background: linear-gradient(135deg, #C96A6A, #B04848) !important;
+    color: #FFFDF8 !important;
+    border: none !important;
+}
+.section-count-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+}
+.section-count-badge.has-count {
+    background: #FFE3E0;
+    color: #C1372E;
+    animation: badgePulse 1.6s ease-in-out infinite;
+}
+.section-count-badge.zero-count {
+    background: #EAF6EC;
+    color: #3C8C4B;
+}
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+.streak-toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15px;
+    z-index: 9999;
+    transition: opacity 0.3s;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+.streak-toast.progress { background: #FFF3E0; color: #C1651C; }
+.streak-toast.cleared  { background: #E8F8ED; color: #1F8A3B; }
+.streak-toast.quiz-top-celebration {
+    width: auto;
+    padding: 3px 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #188443;
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: 900;
+    line-height: 1.15;
+    text-align: center;
+    word-break: keep-all;
+    text-shadow: 0 2px 7px rgba(255, 255, 255, 0.95);
+    box-shadow: none;
+    pointer-events: none;
+    animation: quizClearCelebration 520ms ease-out;
+}
+
+.streak-toast.quiz-top-celebration::before,
+.streak-toast.quiz-top-celebration::after {
+    position: absolute;
+    top: 50%;
+    color: #F2B705;
+    font-size: 18px;
+    line-height: 1;
+    content: "✦";
+    pointer-events: none;
+    animation: miniFirework 620ms ease-out both;
+}
+
+.streak-toast.quiz-top-celebration::before {
+    left: -12px;
+}
+
+.streak-toast.quiz-top-celebration::after {
+    right: -12px;
+    color: #E65050;
+    animation-delay: 70ms;
+}
+
+@keyframes quizClearCelebration {
+    0%   { transform: translateX(-50%) scale(0.65); opacity: 0; }
+    45%  { transform: translateX(-50%) scale(1.12); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+@keyframes miniFirework {
+    0%   { transform: translateY(-50%) scale(0.25) rotate(0deg); opacity: 0; }
+    35%  { transform: translateY(-50%) scale(1.45) rotate(70deg); opacity: 1; }
+    100% { transform: translateY(-50%) scale(0.35) rotate(150deg); opacity: 0; }
+}
+.streak-dot-row {
+    display: flex; align-items: center; gap: 6px;
+    justify-content: center; margin-bottom: 10px;
+}
+.streak-dot-row .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #EAD9C8; display: inline-block;
+}
+.streak-dot-row .dot.filled {
+    background: #E4574C;
+    box-shadow: 0 0 6px rgba(228,87,76,0.6);
+}
+.streak-dot-row .streak-text {
+    font-size: 13px; color: #B8382C; font-weight: 700; margin-left: 6px;
+}
+.wordbook-action-btn {
+    margin-top: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.wordbook-action-btn.add { background: #FFF6D9; color: #A8790B; }
+.wordbook-action-btn.add.added { background: #E8F8ED; color: #1F8A3B; }
+.wordbook-action-btn.remove { background: #FFEAEA; color: #C1372E; }
+
+.wordbook-learning-result { margin: 18px 0; text-align: left; }
+.wordbook-learning-result details { margin: 10px 0; border: 1px solid #ead9a7; border-radius: 16px; background: #fffaf0; overflow: hidden; }
+.wordbook-learning-result summary { padding: 16px; font-size: 17px; font-weight: 850; cursor: pointer; list-style-position: inside; }
+.wordbook-result-help, .wordbook-empty-message { margin: 0; padding: 0 16px 14px; color: #786b53; font-size: 14px; }
+.wordbook-result-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid #eee4ca; }
+.wordbook-result-row strong, .wordbook-result-row small { display: block; }
+.wordbook-result-row small { margin-top: 3px; color: #817867; }
+.wordbook-result-row .wordbook-action-btn { width: auto; flex: 0 0 auto; margin: 0; padding: 9px 12px; font-size: 13px; }
+
+/* 오답 클리어: 문제 단어 양옆에서 짧게 터지는 색종이 폭죽 */
+.streak-toast.quiz-top-celebration::before,
+.streak-toast.quiz-top-celebration::after {
+    content: none;
+    animation: none;
+}
+
+/* 좁은 휴대전화에서도 상단의 시간·진행·일시멈춤을 한 줄로 유지합니다. */
+@media (max-width: 480px) {
+    .status-container {
+        gap: 6px;
+    }
+
+    .timer-box,
+    .progress-text,
+    .pause-toggle-btn,
+    .ui-btn-pause {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 7px 5px;
+        font-size: 12px;
+        line-height: 1.15;
+        text-align: center;
+        white-space: nowrap;
+    }
+}

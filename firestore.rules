@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// =====================================================================
+// ★★★ 배포 순서 주의 ★★★
+//
+// 이 규칙은 쓰기(create/update)에 App Check 토큰을 요구합니다.
+// App Check 를 켜기 전에 이 규칙부터 배포하면 request.app 이 항상 null 이라
+// 모든 클라우드 백업 쓰기가 즉시 실패합니다.
+//
+// 반드시 아래 순서를 지키세요:
+//   1) Firebase 콘솔 > App Check 에서 웹 앱 등록 (reCAPTCHA v3) → 사이트 키 발급
+//   2) cloud-backup-config.js 의 appCheckSiteKey 에 키를 넣고 사이트 배포
+//   3) App Check 콘솔에서 "확인된 요청" 수치가 올라가는지 24시간 관찰
+//      (여기서 미확인 요청이 남아 있으면 4번으로 넘어가면 안 됩니다)
+//   4) Cloud Firestore 를 "적용(Enforce)" 으로 전환
+//   5) 그 다음에 이 규칙 배포:  firebase deploy --only firestore:rules
+//
+// 되돌리기: request.app != null 조건을 지우고 다시 배포하면 즉시 복구됩니다.
+//
+// 왜 필요한가: 이 규칙 이전에는 인증도 App Check 도 없어서, 공개된 projectId 만
+// 알면 누구나 43자 무작위 ID 로 문서를 무한 생성할 수 있었습니다.
+// 1회당 메타데이터 1 + 청크 14 = 15문서, 약 8.4MB 입니다.
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function validBackupId(backupId) {
+      return backupId.matches('^[A-Za-z0-9_-]{43}$');
+    }
+
+    // App Check 를 통과한 정상 클라이언트인지 확인합니다.
+    function verifiedClient() {
+      return request.app != null;
+    }
+
+    function validMetadata(data) {
+      return data.keys().hasOnly([
+          'schema', 'version', 'revision', 'ownerVerifier', 'chunkCount',
+          'byteLength', 'bodySha256', 'exportedAt', 'recordCount',
+          'createdAt', 'updatedAt'
+        ])
+        && data.schema == 'tentenquiz-firestore-backup'
+        && data.version == 1
+        && data.revision is string && data.revision.size() == 22
+        && data.ownerVerifier is string && data.ownerVerifier.size() == 43
+        && data.chunkCount is int && data.chunkCount >= 1 && data.chunkCount <= 14
+        && data.byteLength is int && data.byteLength >= 1 && data.byteLength <= 7864320
+        && data.bodySha256 is string && data.bodySha256.size() == 43
+        && data.exportedAt is string && data.exportedAt.size() >= 20 && data.exportedAt.size() <= 40
+        && data.recordCount is int && data.recordCount >= 0 && data.recordCount <= 1000000
+        && data.createdAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function validChunk(data) {
+      return data.keys().hasOnly(['schema', 'version', 'revision', 'index', 'total', 'data'])
+        && data.schema == 'tentenquiz-firestore-backup'
+        && data.version == 1
+        && data.revision is string && data.revision.size() == 22
+        && data.index is int && data.index >= 0 && data.index < 14
+        && data.total is int && data.total >= 1 && data.total <= 14
+        && data.index < data.total
+        && data.data is string && data.data.size() >= 1 && data.data.size() <= 600000;
+    }
+
+    match /tentenCloudBackups/{backupId} {
+      allow get: if validBackupId(backupId);
+      allow list: if false;
+      allow create: if verifiedClient()
+        && validBackupId(backupId)
+        && validMetadata(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if verifiedClient()
+        && validBackupId(backupId)
+        && validMetadata(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.ownerVerifier == resource.data.ownerVerifier
+        && request.resource.data.revision != resource.data.revision;
+      // 삭제와 읽기는 App Check 를 요구하지 않습니다.
+      // 사용자가 자기 백업을 지우거나 복구하는 경로까지 막히면
+      // 데이터에 갇히는 상황이 생기기 때문입니다.
+      // backupId 는 복구 코드에서 파생된 256비트 값이라 추측이 불가능하므로,
+      // 이 두 동작은 backupId 소지 자체를 권한으로 봅니다.
+      allow delete: if validBackupId(backupId);
+
+      match /chunks/{chunkId} {
+        allow get: if validBackupId(backupId) && chunkId.matches('^[0-9]{4}$');
+        allow list: if false;
+        allow create, update: if verifiedClient()
+          && validBackupId(backupId)
+          && chunkId.matches('^[0-9]{4}$')
+          && validChunk(request.resource.data);
+        allow delete: if validBackupId(backupId) && chunkId.matches('^[0-9]{4}$');
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

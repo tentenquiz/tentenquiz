@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /backups/
+Disallow: /tools/
+Disallow: /*.backup.
+Disallow: /*.before-
+
+Sitemap: https://tentenquiz.com/sitemap.xml

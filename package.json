@@ -1,0 +1,9 @@
+{
+  "name": "tentenquiz-static-site",
+  "private": true,
+  "scripts": {
+    "build:seo": "node tools/build-multilingual-seo.js",
+    "test:seo": "node tools/test_multilingual-seo.js",
+    "test:seo:browser": "node tools/test_multilingual-seo-browser.js"
+  }
+}

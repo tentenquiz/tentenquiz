@@ -1,0 +1,66 @@
+# =====================================================================
+# Cloudflare Pages 응답 헤더 설정
+# firebase.json 의 hosting.headers 를 대체합니다.
+#
+# 주의 1) 이 파일은 "배포 출력 디렉터리의 루트"에 있어야 합니다.
+#         (저장소 루트를 그대로 배포하므로 프로젝트 루트가 맞습니다.)
+# 주의 2) HTML 에는 일부러 Cache-Control 을 걸지 않았습니다.
+#         Cloudflare Pages 는 HTML 을 기본적으로 엣지 캐시하지 않고
+#         `max-age=0, must-revalidate` 로 내려줍니다. 여기서 `/*` 에
+#         Cache-Control 을 걸면 아래 immutable 규칙과 우선순위가 얽혀
+#         자산 캐싱이 함께 죽을 수 있어 건드리지 않는 편이 안전합니다.
+# 주의 3) 오디오(audio.tentenquiz.com)는 별도 오리진이라 이 파일의
+#         영향을 받지 않습니다. 캐시/CORS 는 R2 버킷 설정에서 하세요.
+# =====================================================================
+
+# ---------- 전체 공통 보안 헤더 ----------
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+# ---------- 서비스 워커: 절대 캐시 금지 ----------
+# 이게 캐시되면 이후 모든 배포가 사용자에게 영원히 도달하지 않습니다.
+# 배포 후 curl -I 로 반드시 확인하세요.
+/service-worker.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# ---------- 매니페스트 ----------
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600, must-revalidate
+  Content-Type: application/manifest+json; charset=utf-8
+
+# ---------- 크롤러 관련 파일 ----------
+/robots.txt
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600, must-revalidate
+  Content-Type: application/xml; charset=utf-8
+
+# ---------- 버전 쿼리(?v=)로 캐시 무효화하는 자산 ----------
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# ---------- 빌드 소스/백업 노출 차단 ----------
+# Git 연동 배포라면 .gitignore 로 이미 제외되지만,
+# `wrangler pages deploy .` 직접 업로드 시에는 .gitignore 가 무시됩니다.
+# 최소한 색인만이라도 막습니다. (접근 차단이 아니라 색인 차단입니다)
+/tools/*
+  X-Robots-Tag: noindex, nofollow
+
+/backups/*
+  X-Robots-Tag: noindex, nofollow
+
+/locales/*
+  X-Robots-Tag: noindex, nofollow

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, follow">
+    <meta name="theme-color" content="#9f2f2f">
+    <title>Page not found | TentenQuiz</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="stylesheet" href="legal.css?v=20260820-1">
+</head>
+<body>
+    <main class="legal-main">
+        <article class="legal-document" aria-labelledby="not-found-title">
+            <header>
+                <p class="legal-effective-date" aria-hidden="true">🔎 404</p>
+                <h1 id="not-found-title">Page not found</h1>
+            </header>
+            <p id="not-found-description" class="legal-intro">The address may be incorrect or the page may have moved.</p>
+            <p class="legal-highlight"><a id="not-found-home" href="index.html">Back to TentenQuiz</a></p>
+        </article>
+    </main>
+    <script>
+        (function localizeNotFoundPage() {
+            const copy = {
+                en: ['Page not found', 'The address may be incorrect or the page may have moved.', 'Back to TentenQuiz'],
+                ko: ['페이지를 찾을 수 없어요', '주소가 잘못되었거나 페이지가 이동되었을 수 있습니다.', '텐텐퀴즈로 돌아가기'],
+                ja: ['ページが見つかりません', 'アドレスが間違っているか、ページが移動した可能性があります。', 'テンテンクイズに戻る'],
+                'zh-CN': ['找不到页面', '地址可能有误，或页面已被移动。', '返回天天测验'],
+                'zh-TW': ['找不到頁面', '網址可能有誤，或頁面已被移動。', '返回天天測驗'],
+                fr: ['Page introuvable', 'L’adresse est peut-être incorrecte ou la page a été déplacée.', 'Retour à TentenQuiz'],
+                de: ['Seite nicht gefunden', 'Die Adresse ist möglicherweise falsch oder die Seite wurde verschoben.', 'Zurück zu TentenQuiz'],
+                es: ['Página no encontrada', 'Es posible que la dirección sea incorrecta o que la página se haya movido.', 'Volver a TentenQuiz'],
+                vi: ['Không tìm thấy trang', 'Địa chỉ có thể không đúng hoặc trang đã được chuyển.', 'Quay lại TentenQuiz'],
+                ar: ['الصفحة غير موجودة', 'قد يكون العنوان غير صحيح أو تم نقل الصفحة.', 'العودة إلى TentenQuiz'],
+                it: ['Pagina non trovata', 'L’indirizzo potrebbe essere errato oppure la pagina è stata spostata.', 'Torna a TentenQuiz'],
+                ru: ['Страница не найдена', 'Возможно, адрес указан неверно или страница была перемещена.', 'Вернуться в TentenQuiz']
+            };
+            const raw = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+            let language = raw.startsWith('zh-tw') || raw.startsWith('zh-hk') || raw.startsWith('zh-hant')
+                ? 'zh-TW'
+                : raw.startsWith('zh') ? 'zh-CN' : raw.split('-')[0];
+            if (!copy[language]) language = 'en';
+            const [title, description, home] = copy[language];
+            document.documentElement.lang = language;
+            document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+            document.title = `${title} | TentenQuiz`;
+            document.getElementById('not-found-title').textContent = title;
+            document.getElementById('not-found-description').textContent = description;
+            document.getElementById('not-found-home').textContent = home;
+        })();
+    </script>
+</body>
+</html>

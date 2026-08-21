@@ -1,0 +1,39 @@
+# Local credentials and environment files
+.secrets/
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
+**/*service-account*.json
+**/*service_account*.json
+**/english-audio-api-*.json
+
+# Generated Firebase files
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# 음성 자산 (Cloudflare R2 로 분리)
+# Cloudflare Pages 는 배포당 20,000파일 제한이 있어 3만 개의 음성 파일을
+# 저장소에 두면 배포가 업로드 단계에서 실패합니다.
+# 이미 커밋되어 있다면: git rm -r --cached audio audio_dialogue
+audio/
+audio_dialogue/
+
+# Local backups and generated review/build output
+backups/
+tts-build/
+tts-review/
+**/*.backup.*
+**/*.before-*
+
+# Local dependency and editor output
+node_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.log

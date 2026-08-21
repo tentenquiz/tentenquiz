@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "TentenQuiz Global",
+  "short_name": "TentenQuiz Global",
+  "description": "Learn everyday vocabulary in 12 languages with quick quizzes.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffaf3",
+  "theme_color": "#9f2f2f",
+  "categories": ["education", "language"],
+  "icons": [
+    {
+      "src": "assets/favicon/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/favicon/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

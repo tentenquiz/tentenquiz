@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 235" role="img" aria-labelledby="title">
+  <title id="title">MIN JU 100 points</title>
+  <defs>
+    <linearGradient id="score-red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b91c2d"/>
+      <stop offset="1" stop-color="#710711"/>
+    </linearGradient>
+    <filter id="score-shadow" x="-18%" y="-18%" width="136%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3.2" flood-color="#370106" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+  <g transform="rotate(-5 128 96)" fill="none" stroke="url(#score-red)" stroke-linecap="round" stroke-linejoin="round" filter="url(#score-shadow)">
+    <path stroke-width="18" d="M35 52C47 44 59 31 68 23c-3 26-6 57-7 88 0 13 6 20 21 19"/>
+    <path stroke-width="18" d="M122 30c-21-3-33 19-33 49 0 32 12 51 32 49 22-2 30-25 29-55-1-29-11-42-28-43z"/>
+    <path stroke-width="18" d="M194 27c-20-2-32 21-31 51 1 31 14 50 33 48 21-2 30-25 27-56-2-29-12-42-29-43z"/>
+    <path stroke-width="15" d="M29 148c54 11 138-6 203-1"/>
+    <path stroke-width="12" d="M48 174c50 9 117-5 168-2"/>
+  </g>
+  <g transform="skewX(-6)" fill="none" stroke="#620710" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M69 224v-27l9 15 9-15v27"/>
+    <path d="M99 197v27m-5-27h10m-10 27h10"/>
+    <path d="M110 224v-27l19 27v-27"/>
+    <path d="M145 197h19v16c0 7-4 11-10 11-5 0-9-3-10-7"/>
+    <path d="M174 197v16c0 7 4 11 10 11s10-4 10-11v-16"/>
+  </g>
+</svg>
