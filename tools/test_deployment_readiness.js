@@ -112,7 +112,7 @@ if (!exists('_headers')) {
 // =====================================================================
 // 2. _redirects — legacy x-default 경로를 건드리지 않았는지
 // =====================================================================
-const LEGACY_PATHS = ['/about.html', '/guide.html', '/contact.html', '/privacy.html', '/terms.html'];
+const LEGACY_PATHS = ['/about', '/guide', '/contact', '/privacy', '/terms'];
 if (!exists('_redirects')) {
     warn('_redirects 가 없습니다. www→apex 정규화가 없으면 중복 콘텐츠가 생길 수 있습니다.');
 } else {

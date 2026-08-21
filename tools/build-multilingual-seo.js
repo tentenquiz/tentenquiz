@@ -23,13 +23,23 @@ function resolveSocialImagePath(locale) {
     return DEFAULT_SOCIAL_IMAGE;
 }
 
+// legacyPath = Cloudflare Pages 가 실제로 200 을 주는 정식 URL.
+//
+// Pages 의 라우팅은 파일 종류에 따라 정반대입니다:
+//   about.html (루트 파일)         -> /about     이 정식. /about.html 과 /about/ 는 308.
+//   ja/about/index.html (디렉터리)  -> /ja/about/ 이 정식. /ja/about 은 308.
+//
+// 여기에 308 로 리다이렉트되는 URL 을 쓰면 hreflang="x-default" 타깃과
+// sitemap <loc>, 루트 페이지 canonical 이 모두 리다이렉트를 가리키게 되어
+// 다국어 hreflang 클러스터가 무시될 수 있습니다.
+// (Firebase Hosting 의 trailingSlash 설정과는 동작이 다릅니다.)
 const pageDefinitions = [
     { key: 'home', sourceFile: 'index.html', legacyPath: '/' },
-    { key: 'about', sourceFile: 'about.html', legacyPath: '/about.html' },
-    { key: 'guide', sourceFile: 'guide.html', legacyPath: '/guide.html' },
-    { key: 'contact', sourceFile: 'contact.html', legacyPath: '/contact.html' },
-    { key: 'privacy', sourceFile: 'privacy.html', legacyPath: '/privacy.html' },
-    { key: 'terms', sourceFile: 'terms.html', legacyPath: '/terms.html' }
+    { key: 'about', sourceFile: 'about.html', legacyPath: '/about' },
+    { key: 'guide', sourceFile: 'guide.html', legacyPath: '/guide' },
+    { key: 'contact', sourceFile: 'contact.html', legacyPath: '/contact' },
+    { key: 'privacy', sourceFile: 'privacy.html', legacyPath: '/privacy' },
+    { key: 'terms', sourceFile: 'terms.html', legacyPath: '/terms' }
 ];
 
 const headingIds = {
@@ -479,6 +489,19 @@ function buildSitemap(baseUrl, locales, lastModified) {
 //                  페이지(/ko/about/ 등)가 이 소스 파일의 본문을 그대로 씁니다.
 //                  여기를 영어로 바꾸면 한국어 페이지가 통째로 영어가 됩니다.
 //                  lang 속성만 실제 내용에 맞게 ko 로 명시합니다.
+// 루트 페이지끼리의 내부 링크를 Pages 정식 URL 로 바꿉니다.
+// about.html -> /about,  index.html -> /   (각각 308 왕복 1회를 없앱니다)
+function rewriteLegacyLinks(html) {
+    const map = new Map(pageDefinitions.map((page) => [page.sourceFile, page.legacyPath]));
+    return html.replace(/<a\b[^>]*href=["'][^"']+["'][^>]*>/gi, (tag) => {
+        const href = getAttribute(tag, 'href');
+        if (!href || /^(?:https?:|mailto:|tel:|data:|#|\/)/i.test(href)) return tag;
+        const cleanPath = href.split(/[?#]/)[0].replace(/^\.\//, '');
+        if (cleanPath.includes('/') || !map.has(cleanPath)) return tag;
+        return setAttribute(tag, 'href', map.get(cleanPath));
+    });
+}
+
 function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessages) {
     const englishLocale = locales.find((locale) => locale.code === 'en');
     const koreanLocale = locales.find((locale) => locale.code === 'ko');
@@ -511,6 +534,9 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
         next = upsertMeta(next, 'property', 'og:locale', locale.ogLocale);
         next = injectAlternateLinks(next, buildAlternateLinks(baseUrl, locales, pageDefinition));
         next = upsertMeta(next, 'property', 'og:url', absoluteUrl(baseUrl, pageDefinition.legacyPath));
+        // 소스에 하드코딩된 canonical(/about.html 등)이 308 대상을 가리키지 않도록 덮어씁니다.
+        next = upsertCanonical(next, absoluteUrl(baseUrl, pageDefinition.legacyPath));
+        next = rewriteLegacyLinks(next);
         next = applySocialTags(next, baseUrl, null, title, description);
         next = injectAdsense(next, adsenseClient);
         next = deferHeadScripts(next);
