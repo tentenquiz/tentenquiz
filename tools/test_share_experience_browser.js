@@ -84,6 +84,7 @@ function browserExecutable() {
                     buttonLeft: bounds.left,
                     buttonRight: bounds.right,
                     viewportWidth: window.innerWidth,
+                    languagePanelMarginTop: getComputedStyle(document.getElementById('global-language-panel')).marginTop,
                     image: document.querySelector('meta[property="og:image"]')?.content || ''
                 };
             });
@@ -91,6 +92,7 @@ function browserExecutable() {
             assert(state.buttonText === messages[code].shareResult, `Wrong share label for ${slug}`);
             assert(state.buttonHeight >= 54, `Share button is too short for ${slug}`);
             assert(state.buttonLeft >= 0 && state.buttonRight <= state.viewportWidth, `Share button overflows at 360px for ${slug}`);
+            assert(state.languagePanelMarginTop === '0px', `Language panel top gap returned for ${slug}`);
             assert(state.image === `https://tentenquiz.com/assets/social/og-image-${slug}.png`, `Wrong card image for ${slug}`);
         }
 
