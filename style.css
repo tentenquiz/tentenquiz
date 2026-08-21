@@ -4049,4 +4049,14 @@ html[dir="rtl"] .daily-quiz-banner {
     .wrong-meaning {
         font-size: 16px;
     }
+
+    /* 카드 바깥 요소는 화면 모서리에 딱 붙으면 답답해 보입니다.
+       퀴즈 카드만 full-bleed 로 두고, 상단 상태바·아코디언·푸터에는
+       최소한의 숨 쉴 공간을 남깁니다. */
+    .status-container,
+    .info-accordion,
+    footer {
+        margin-left: 10px;
+        margin-right: 10px;
+    }
 }
