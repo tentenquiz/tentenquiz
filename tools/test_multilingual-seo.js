@@ -5,6 +5,7 @@ const vm = require('vm');
 const root = path.resolve(__dirname, '..');
 const siteConfig = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'site.json'), 'utf8'));
 const baseUrl = String(siteConfig.baseUrl).replace(/\/+$/, '');
+const socialImageVersion = '20260821-tenten10-1';
 const locales = siteConfig.locales.map((slug) => (
     JSON.parse(fs.readFileSync(path.join(root, 'locales', slug, 'seo.json'), 'utf8'))
 ));
@@ -75,7 +76,7 @@ for (const locale of locales) {
         htmlCount += 1;
 
         assert(html.includes(generatedMarker), `Missing generated marker: ${path.relative(root, filePath)}`);
-        const localizedSocialImage = `${baseUrl}/assets/social/og-image-${locale.slug}.png`;
+        const localizedSocialImage = `${baseUrl}/assets/social/og-image-${locale.slug}.png?v=${socialImageVersion}`;
         assert(html.includes(`property="og:image" content="${localizedSocialImage}"`), `Wrong social image for ${locale.slug}/${page.key}`);
         assert(html.includes(`name="twitter:image" content="${localizedSocialImage}"`), `Wrong Twitter image for ${locale.slug}/${page.key}`);
         assert(new RegExp(`<html\\b[^>]*lang=["']${locale.htmlLang}["']`, 'i').test(html), `Wrong lang for ${locale.slug}/${page.key}`);
@@ -174,9 +175,9 @@ for (const file of socialTargets) {
     assert(/name=["']twitter:card["']/i.test(html), `twitter:card is missing in ${path.relative(root, file)}`);
 }
 
-assert(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes(`${baseUrl}/assets/social/og-image-en.png`), 'The x-default home must use the English social image');
+assert(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes(`${baseUrl}/assets/social/og-image-en.png?v=${socialImageVersion}`), 'The x-default home must use the English social image');
 for (const legacyFile of ['about.html', 'guide.html', 'contact.html', 'privacy.html', 'terms.html']) {
-    assert(fs.readFileSync(path.join(root, legacyFile), 'utf8').includes(`${baseUrl}/assets/social/og-image-ko.png`), `${legacyFile} must use the Korean social image`);
+    assert(fs.readFileSync(path.join(root, legacyFile), 'utf8').includes(`${baseUrl}/assets/social/og-image-ko.png?v=${socialImageVersion}`), `${legacyFile} must use the Korean social image`);
 }
 
 for (const locale of locales) {

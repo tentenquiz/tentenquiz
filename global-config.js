@@ -106,7 +106,11 @@
         } else {
             url.searchParams.set('native', window.tentenGlobal.interfaceLanguage);
         }
-        url.searchParams.set('zhReading', window.tentenGlobal.chineseReading);
+        if (window.tentenGlobal.learningLanguage === 'zh-CN' || window.tentenGlobal.learningLanguage === 'zh-TW') {
+            url.searchParams.set('zhReading', window.tentenGlobal.chineseReading);
+        } else {
+            url.searchParams.delete('zhReading');
+        }
         return url.toString();
     };
 

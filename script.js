@@ -3303,11 +3303,29 @@ async function copyShareText(text) {
     fallbackCopyShareText(text);
 }
 
+function buildCleanShareUrl() {
+    const canonicalHref = document.querySelector('link[rel="canonical"]')?.href;
+    const url = new URL(canonicalHref || window.location.href);
+    const learningLanguage = String(window.tentenGlobal?.learningLanguage || '').trim();
+
+    if (learningLanguage) url.searchParams.set('learn', learningLanguage);
+    if (learningLanguage === 'zh-CN' || learningLanguage === 'zh-TW') {
+        const chineseReading = window.tentenGlobal?.chineseReading === 'zhuyin' ? 'zhuyin' : 'pinyin';
+        url.searchParams.set('zhReading', chineseReading);
+    } else {
+        url.searchParams.delete('zhReading');
+    }
+
+    url.searchParams.delete('native');
+    url.hash = '';
+    return url.toString();
+}
+
 async function shareOrCopy(title, body, includeChallenge = true) {
-    const currentUrl = window.location.href;
+    const shareUrl = buildCleanShareUrl();
     if (navigator.share) {
         try {
-            await navigator.share({ title, text: body, url: currentUrl });
+            await navigator.share({ title, text: body, url: shareUrl });
             return;
         } catch (error) {
             if (error && error.name === 'AbortError') return;
@@ -3316,7 +3334,7 @@ async function shareOrCopy(title, body, includeChallenge = true) {
     }
 
     const challengeLine = includeChallenge ? `\n\n${uiT('challenge')}` : '';
-    await copyShareText(`${title}\n\n${body}${challengeLine}\n${currentUrl}`);
+    await copyShareText(`${title}\n\n${body}${challengeLine}\n${shareUrl}`);
     alert(uiT('copied'));
 }
 

@@ -11,6 +11,7 @@ sandbox.globalThis = sandbox.window;
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, 'i18n.js'), 'utf8'), sandbox, { filename: 'i18n.js' });
 const messages = sandbox.window.TENTEN_I18N_MESSAGES;
+const socialImageVersion = '20260821-tenten10-1';
 
 const mimeTypes = {
     '.css': 'text/css; charset=utf-8',
@@ -93,10 +94,10 @@ function browserExecutable() {
             assert(state.buttonHeight >= 54, `Share button is too short for ${slug}`);
             assert(state.buttonLeft >= 0 && state.buttonRight <= state.viewportWidth, `Share button overflows at 360px for ${slug}`);
             assert(state.languagePanelMarginTop === '0px', `Language panel top gap returned for ${slug}`);
-            assert(state.image === `https://tentenquiz.com/assets/social/og-image-${slug}.png`, `Wrong card image for ${slug}`);
+            assert(state.image === `https://tentenquiz.com/assets/social/og-image-${slug}.png?v=${socialImageVersion}`, `Wrong card image for ${slug}`);
         }
 
-        await page.goto(`${origin}/ko/`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${origin}/ko/?learn=en`, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => typeof shareToKakao === 'function');
         const payload = await page.evaluate(async () => {
             score = 7;
@@ -108,11 +109,21 @@ function browserExecutable() {
         assert(payload.title.startsWith('텐텐퀴즈 · '), 'Korean share title is missing');
         assert(payload.text.includes('10문제를 12.34초에 풀고 7개를 맞혔어요!'), 'Korean result values are missing');
         assert(payload.text.includes('\n짧고 재미있게'), 'Korean warm recommendation is missing');
-        assert(payload.url === `${origin}/ko/`, 'The current localized URL is not shared');
+        assert(payload.url === 'https://tentenquiz.com/ko/?learn=en', 'The official clean URL is not shared');
+        assert(!payload.url.includes('zhReading'), 'Non-Chinese share URL contains an unnecessary reading option');
+
+        await page.goto(`${origin}/ko/?learn=zh-TW&zhReading=zhuyin`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => typeof shareToKakao === 'function');
+        const chinesePayload = await page.evaluate(async () => {
+            window.__sharePayload = null;
+            await shareToKakao();
+            return window.__sharePayload;
+        });
+        assert(chinesePayload.url === 'https://tentenquiz.com/ko/?learn=zh-TW&zhReading=zhuyin', 'Chinese share URL lost its reading option');
 
         console.log('OK: all 12 localized share buttons fit a 360px viewport');
         console.log('OK: all 12 localized pages reference their matching social card');
-        console.log('OK: the Korean native share payload contains the score, warm invitation, and localized URL');
+        console.log('OK: native sharing uses the official clean domain and preserves Chinese reading when needed');
         await context.close();
     } finally {
         if (browser) await browser.close();

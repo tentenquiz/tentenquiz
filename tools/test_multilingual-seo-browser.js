@@ -58,6 +58,7 @@ function assert(condition, message) {
         browser = await chromium.launch({ headless: true, executablePath });
         const context = await browser.newContext({ viewport: { width: 430, height: 920 } });
         await context.addInitScript(() => {
+            window.__TENTEN_AUDIO_BASE_URL__ = '';
             localStorage.setItem('tenten.interfaceLanguage', 'ru');
             localStorage.setItem('tenten.learningLanguage', 'ja');
             window.__tentenRecordedAudio = [];
