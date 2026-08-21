@@ -520,6 +520,11 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
             : readMetaContent(current, 'name', 'description');
 
         let next = setDocumentLanguage(current, locale);
+        // 루트 페이지에도 <base href="/"> 가 필요합니다.
+        // 서비스 워커가 오프라인 폴백으로 루트 셸을 /ko/ 같은 주소에서 내주면,
+        // base 가 없을 때 style.css?v=... 가 /ko/style.css 로 해석되어
+        // CSS·JS 를 하나도 못 찾고 무스타일 페이지가 나옵니다.
+        next = ensureBaseHref(next);
         if (isHome) {
             next = replaceTitle(next, title);
             next = upsertMeta(next, 'name', 'description', description);
