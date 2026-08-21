@@ -4257,6 +4257,9 @@ html[dir="rtl"] .daily-quiz-banner {
     line-height: 1.2;
     letter-spacing: -0.2px;
     word-break: keep-all;
+    /* 일본어·중국어는 keep-all 이면 글자 사이에서도 끊지 않아 버튼 밖으로
+       흘러나갑니다. anywhere 는 넘칠 때만 끊으므로 평소 조판은 그대로입니다. */
+    overflow-wrap: anywhere;
 
     cursor: pointer;
     box-shadow: 0 10px 22px rgba(159, 47, 47, 0.26);
@@ -4355,5 +4358,171 @@ html[dir="rtl"] .daily-quiz-banner {
     .pwa-banner-cta {
         justify-self: center;
         width: min(100%, 360px);
+    }
+}
+
+
+/* =========================================================
+   28. 간판(브랜드 락업)과 결과 화면 헤더 확대
+   ---------------------------------------------------------
+   문제:
+   - 앱 이름이 24px 이었습니다. 본문(16px)보다 겨우 한 뼘 큰 크기라
+     "간판"이 아니라 그냥 한 줄의 텍스트로 읽혔습니다.
+   - 양옆 🙌 가 글자와 같은 크기라 시선을 반씩 나눠 가졌습니다.
+   - 결과 화면 제목이 모바일에서 약 24px, 점수 줄이 18px 이라
+     10문제를 다 푼 보상 순간의 무게가 전혀 실리지 않았습니다.
+
+   해법:
+   - 이름을 32~44px 로 키우고 900 굵기 + 타이트한 자간으로 워드마크화.
+   - 이모지는 0.56em 으로 눌러 "장식"의 자리로 돌려보냅니다.
+     (앱 아이콘의 손 모티프라 없애지는 않습니다)
+   - 비라틴 언어(ko·ja)에서는 이름 아래 라틴 워드마크를 넓은 자간으로
+     한 줄 얹습니다. 국제 브랜드 락업의 표준 문법이고, 일본·한국 사용자에게
+     로마자 표기를 알려 주는 실용적 효과도 있습니다.
+   - 결과 화면은 제목 → 주제칩 → 점수 → 시간 순서로 크기 차이를 벌려
+     시선이 위에서부터 자연스럽게 흐르게 합니다.
+   ========================================================= */
+
+/* ---------- 간판 ---------- */
+.start-brand {
+    margin: 14px 0 0;
+    text-align: center;
+}
+
+/* 위아래로 천천히 떠 있는 애니메이션은 이름과 라틴 표기가
+   한 덩어리로 움직이도록 락업 전체에 겁니다. */
+.start-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.24em;
+
+    margin: 0;
+
+    font-size: clamp(26px, 8.4vw, 44px);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    word-break: keep-all;
+
+    color: var(--primary-dark, #6B2C2C);
+}
+
+.start-title-text {
+    display: inline-block;
+}
+
+/* 이모지는 글자의 절반 조금 넘는 크기로. 베이스라인이 글자보다
+   아래로 처져 보여서 살짝 올려 광학 정렬을 맞춥니다. */
+.start-title-mark {
+    font-size: 0.56em;
+    line-height: 1;
+    transform: translateY(-0.14em);
+    opacity: 0.94;
+}
+
+/* 라틴 워드마크. 자간을 넓게 벌리면 끝 글자 뒤에도 자간이 붙어
+   광학적으로 왼쪽으로 치우쳐 보이므로 text-indent 로 되돌립니다. */
+.start-wordmark {
+    margin: 7px 0 0;
+    font-size: clamp(12.5px, 3.3vw, 15px);
+    font-weight: 800;
+    line-height: 1;
+    /* 대소문자 혼용(TentenQuiz) 표기라 대문자 전용만큼 자간을 벌리면
+       단어가 흩어져 보입니다. 0.14em 이 형태를 유지하는 선입니다. */
+    letter-spacing: 0.14em;
+    text-indent: 0.14em;
+    color: var(--primary-dark, #6B2C2C);
+    opacity: 0.5;
+}
+
+.start-wordmark[hidden] {
+    display: none;
+}
+
+/* 학습 언어 칩은 락업과 한 덩어리로 보이지 않도록 간격을 벌립니다. */
+.start-subtitle {
+    margin-top: 17px;
+}
+
+/* ---------- 결과 화면 헤더 ---------- */
+/* 18번 섹션이 .card > h2 를 clamp(23px, 6.1vw, 28px) !important 로
+   눌러 두었기 때문에, 결과 카드 제목만 같은 무게로 되돌립니다. */
+#result-card > h2,
+.result-card > h2 {
+    font-size: clamp(28px, 7.6vw, 36px) !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.5px !important;
+    margin: 6px 0 10px !important;
+    /* 두 줄이 될 때 끝의 🏁 하나만 떨어져 나가는 고아 줄을 막습니다. */
+    text-wrap: balance;
+}
+
+/* 일본어 완료 문구("テンテンクイズ完了！")는 다른 언어보다 길어
+   같은 크기로 두면 좁은 화면에서 깃발 하나만 다음 줄로 떨어집니다. */
+:lang(ja) #result-card > h2,
+:lang(ja) .result-card > h2 {
+    font-size: clamp(23px, 6.2vw, 31px) !important;
+}
+
+.result-topic-text-main {
+    font-size: clamp(14px, 3.4vw, 17px);
+}
+
+.result-topic-text-sub {
+    font-size: clamp(11.5px, 2.9vw, 13.5px);
+}
+
+/* 점수 줄. 숫자만 따로 커지던 옛 버그를 피하려고 라벨과 숫자를
+   같은 크기로 유지하는 원칙은 그대로 두고, 줄 전체를 키웁니다.
+   강조는 크기가 아니라 색(초록/빨강)이 맡습니다. */
+/* ★ 선택자에 #result-card 와 p 를 함께 넣어야 합니다 ★
+   23번 섹션의 `#result-card p { font-size: clamp(14px,3.4vw,16px) !important }`
+   가 (1,0,1) 이라, 클래스 하나짜리(0,1,0) 규칙은 !important 를 붙여도 집니다.
+   숫자(#score-text 등)는 font-size: inherit 이므로 이 줄만 키우면 함께 따라옵니다. */
+#result-card p.result-summary-inline,
+.result-card p.result-summary-inline {
+    font-size: clamp(20px, 5.6vw, 24px) !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    margin: 14px 0 22px !important;
+}
+
+#result-card .result-summary-inline #score-text,
+#result-card .result-summary-inline #wrong-count-text,
+.result-card .result-summary-inline #score-text,
+.result-card .result-summary-inline #wrong-count-text {
+    font-weight: 900 !important;
+}
+
+/* 소요 시간은 보조 정보이므로 한 단계 물러나게 둡니다. */
+.result-time-line {
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    opacity: 0.86;
+}
+
+/* 만점 100 그래픽도 헤더가 커진 만큼 함께 키웁니다. */
+.perfect-score-emoji {
+    width: clamp(96px, 19vw, 128px);
+}
+
+/* 일본어 제목은 "テンテンクイズ" 7 글자로 한국어(4 글자)보다 훨씬 깁니다.
+   같은 크기로 두면 좁은 기기에서 카드 폭을 꽉 채워 답답해지므로
+   글자 수에 맞춰 한 단계 낮춥니다. 워드마크 디자인에서는 흔한 조정입니다. */
+:lang(ja) .start-title {
+    font-size: clamp(24px, 7.2vw, 40px);
+}
+
+@media (max-width: 360px) {
+    .start-wordmark {
+        letter-spacing: 0.11em;
+        text-indent: 0.11em;
+    }
+
+    #result-card p.result-summary-inline,
+    .result-card p.result-summary-inline {
+        font-size: 20px !important;
     }
 }

@@ -429,6 +429,14 @@
         document.title = window.tentenT('metaTitle');
         const description = document.querySelector('meta[name="description"]');
         if (description) description.content = window.tentenT('metaDescription');
+        // 간판 아래 라틴 워드마크: 인터페이스 언어의 앱 이름이 이미 라틴 표기면
+        // 같은 글자가 두 번 나오므로 숨깁니다(현재는 ko·ja 에서만 노출).
+        const brandWordmark = document.querySelector('[data-tenten-wordmark]');
+        if (brandWordmark) {
+            const latinBrand = 'TentenQuiz';
+            brandWordmark.textContent = latinBrand;
+            brandWordmark.hidden = window.tentenT('appTitle') === latinBrand;
+        }
         const openGraphTitle = document.querySelector('meta[property="og:title"]');
         const openGraphDescription = document.querySelector('meta[property="og:description"]');
         if (openGraphTitle) openGraphTitle.content = window.tentenT('metaTitle');

@@ -91,14 +91,14 @@
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260821-install-banner-1">
+    <link rel="stylesheet" href="style.css?v=20260821-brand-lockup-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "it";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260820-static-locale-seo-1"></script>
-    <script src="i18n.js?v=20260821-install-banner-1"></script>
+    <script src="i18n.js?v=20260821-brand-lockup-1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -202,7 +202,17 @@
 
         <!-- 첫 화면: 스테이지 선택 화면 -->
         <div id="section-select-screen" class="card section-select-screen">
-            <h1 class="start-title start-title-float">🙌 <span data-i18n="appTitle">TentenQuiz</span> 🙌</h1>
+            <!-- 간판(워드마크 락업). 손 이모지는 앱 아이콘과 같은 모티프라 유지하되
+                 글자보다 작게 눌러 두고, 라틴 표기는 한국어·일본어에서만 나타납니다.
+                 (다른 10개 언어는 제목 자체가 이미 "TentenQuiz" 이라 중복입니다) -->
+            <div class="start-brand start-title-float">
+                <h1 class="start-title">
+                    <span class="start-title-mark" aria-hidden="true">🙌</span>
+                    <span class="start-title-text" data-i18n="appTitle">TentenQuiz</span>
+                    <span class="start-title-mark" aria-hidden="true">🙌</span>
+                </h1>
+                <p class="start-wordmark" data-tenten-wordmark hidden>TentenQuiz</p>
+            </div>
             <p id="language-badge" class="start-subtitle">🌏 Language</p>
             <div id="global-language-panel" class="global-language-panel">
                 <label class="global-language-field">
