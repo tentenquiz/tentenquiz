@@ -146,6 +146,11 @@ function setDocumentLanguage(html, locale) {
     return html.replace(/<html\b[^>]*>/i, (tag) => {
         let next = setAttribute(tag, 'lang', locale.htmlLang);
         next = setAttribute(next, 'dir', locale.dir);
+        // 브라우저 자동 번역 차단.
+        // 이 사이트는 12개 언어를 직접 제공하므로 번역 제안이 불필요하고,
+        // 무엇보다 크롬이 번역을 켜면 퀴즈의 학습 대상 단어까지 번역되어
+        // 문제와 정답이 함께 노출됩니다(예: よてい -> "예정").
+        next = setAttribute(next, 'translate', 'no');
         return next;
     });
 }
@@ -371,6 +376,11 @@ function getOutputPath(locale, pageKey) {
         : path.join(projectRoot, locale.slug, pageKey, 'index.html');
 }
 
+// 브라우저 번역 제안 차단. <html translate="no"> 와 함께 씁니다.
+function applyNoTranslate(html) {
+    return upsertMeta(html, 'name', 'google', 'notranslate');
+}
+
 function applySocialTags(html, baseUrl, locale, title, description) {
     const imageUrl = absoluteUrl(baseUrl, resolveSocialImagePath(locale));
     html = upsertMeta(html, 'property', 'og:image', imageUrl);
@@ -405,6 +415,7 @@ function buildLocalizedPage({ sourceHtml, locale, pageDefinition, baseUrl, local
     html = upsertMeta(html, 'property', 'og:locale', locale.ogLocale);
     html = upsertMeta(html, 'property', 'og:url', canonicalUrl);
     html = applySocialTags(html, baseUrl, locale, title, description);
+    html = applyNoTranslate(html);
     html = upsertCanonical(html, canonicalUrl);
     html = injectAlternateLinks(html, buildAlternateLinks(baseUrl, locales, pageDefinition));
     html = injectStaticLocaleBootstrap(html, locale, localePathMap);
@@ -543,6 +554,7 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
         next = upsertCanonical(next, absoluteUrl(baseUrl, pageDefinition.legacyPath));
         next = rewriteLegacyLinks(next);
         next = applySocialTags(next, baseUrl, null, title, description);
+        next = applyNoTranslate(next);
         next = injectAdsense(next, adsenseClient);
         next = deferHeadScripts(next);
         next = next.replace(/^[\t ]+$/gm, '');
