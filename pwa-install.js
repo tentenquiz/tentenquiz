@@ -24,6 +24,12 @@
 
     let deferredInstallPrompt = null;
     let controls = null;
+    // ★ controls 와 별개의 플래그입니다 ★
+    // refreshBanners() 가 controls 를 먼저 채우는 경로가 있어서(script.js 의
+    // TentenPwaInstall.setScreen() → refreshBanners), initializeControls() 를
+    // `if (controls) return;` 으로 막으면 클릭 리스너가 영영 붙지 않습니다.
+    // 실제로 이 순서가 되면 배너는 보이는데 눌러도 아무 반응이 없었습니다.
+    let listenersBound = false;
 
     function translate(key) {
         return typeof global.tentenT === 'function' ? global.tentenT(key) : '';
@@ -173,6 +179,8 @@
     function refreshBanners() {
         if (!controls) controls = collectControls();
         if (!controls) return;
+        // DOM 은 준비됐는데 리스너가 아직이라면 여기서 붙입니다.
+        if (!listenersBound) initializeControls();
 
         const eligible = isEligible();
         controls.banners.forEach((banner) => {
@@ -222,8 +230,10 @@
         if (doneButton) doneButton.hidden = platform() !== 'ios';
     }
 
+    // 크롬의 네이티브 설치창을 띄웁니다.
+    // 반환값: true = 사용자에게 무언가를 보여 줬음, false = 실패(호출자가 수동 안내로 넘어가야 함)
     async function runDeferredInstallPrompt() {
-        if (!deferredInstallPrompt) return;
+        if (!deferredInstallPrompt) return false;
         closeDialog(controls.desktopDialog);
         const promptEvent = deferredInstallPrompt;
         deferredInstallPrompt = null;
@@ -235,12 +245,22 @@
             if (choice && choice.outcome === 'accepted') {
                 writeStorage(INSTALLED_KEY, 'yes');
                 hideAllBanners();
-                return;
+                return true;
             }
+            // 'dismissed' — 사용자가 크롬 설치창을 닫은 것이므로 정상 동작입니다.
+            refreshBanners();
+            return true;
         } catch (error) {
-            console.warn('앱 설치 안내를 열지 못했습니다:', error);
+            // 제스처가 소비됐거나 이미 사용된 프롬프트 등. 여기서 조용히 끝내면
+            // 사용자 눈에는 "버튼을 눌렀는데 아무 반응이 없다"로 보입니다.
+            console.warn('[TentenQuiz] 네이티브 설치창을 열지 못해 수동 안내로 대체합니다:', error);
+            return false;
         }
-        refreshBanners();
+    }
+
+    function showManualGuide() {
+        fillGuideDialog();
+        openDialog(controls.helpDialog);
     }
 
     async function handleInstallClick() {
@@ -249,19 +269,17 @@
             return;
         }
 
+        // PC 라고 해서 중간 안내창을 한 번 더 띄우지 않습니다.
+        // 클릭 → 크롬 설치창이 바로 뜨는 것이 가장 짧고, 중간 단계가 하나라도
+        // 실패하면 "아무 반응 없음"으로 보이기 때문입니다.
         if (deferredInstallPrompt) {
-            // PC 는 설치창에서 '바탕화면 바로가기 만들기'를 놓치기 쉬워 한 번 짚어 줍니다.
-            if (platform() === 'desktop') {
-                openDialog(controls.desktopDialog);
-                return;
-            }
-            await runDeferredInstallPrompt();
-            return;
+            const shown = await runDeferredInstallPrompt();
+            if (shown) return;
         }
 
-        // beforeinstallprompt 가 없는 브라우저: 플랫폼별 수동 설치 안내
-        fillGuideDialog();
-        openDialog(controls.helpDialog);
+        // 프롬프트가 없거나 실패하면 반드시 플랫폼별 수동 안내를 띄웁니다.
+        // 이 버튼은 어떤 경우에도 조용히 끝나지 않습니다.
+        showManualGuide();
     }
 
     function handleDismiss() {
@@ -279,9 +297,10 @@
     }
 
     function initializeControls() {
-        if (controls) return;
-        controls = collectControls();
+        if (listenersBound) return;
+        if (!controls) controls = collectControls();
         if (!controls) return;
+        listenersBound = true;
 
         controls.banners.forEach((banner) => {
             const cta = banner.querySelector('[data-pwa-banner-cta]');
