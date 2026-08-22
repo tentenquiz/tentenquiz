@@ -65,13 +65,13 @@ function findBrowserExecutable() {
             hasFileLoad: Boolean(document.getElementById('learning-records-load-btn')),
             hidden: document.getElementById('learning-records-manager').hidden
         }));
-        if (uiState.title !== '학습 기록 관리' || uiState.compactStatus !== '클라우드에 자동저장' || uiState.hasFileBackup || uiState.hasFileSave || uiState.hasFileLoad || uiState.hidden) {
+        if (uiState.title !== '학습 기록 관리' || uiState.compactStatus !== '학습 기록 안전 보관 중' || uiState.hasFileBackup || uiState.hasFileSave || uiState.hasFileLoad || uiState.hidden) {
             throw new Error(`learning-record UI is incorrect: ${JSON.stringify(uiState)}`);
         }
         await page.click('#cloud-backup-manage-open-btn');
         const manageStatus = await page.locator('#cloud-backup-manage-status').textContent();
-        if (manageStatus.trim() !== '학습 기록은 각 섹션을 완료할 때마다 클라우드에 안전하게 자동 저장됩니다.') {
-            throw new Error(`management dialog must keep the detailed cloud-backup explanation: ${manageStatus}`);
+        if (manageStatus.trim() !== '학습 기록을 안전하게 보관하고 있어요. 복구 코드를 사용하면 다른 기기에서도 이어서 학습할 수 있어요.') {
+            throw new Error(`management dialog must explain record continuity without exposing the backup schedule: ${manageStatus}`);
         }
         const manageButtonStyles = await page.evaluate(() => {
             const showCode = getComputedStyle(document.getElementById('cloud-backup-show-code-btn'));
@@ -92,13 +92,10 @@ function findBrowserExecutable() {
         if (await page.locator('#cloud-backup-show-code-btn').isHidden()) {
             throw new Error('recovery-code button must be visible before the first milestone');
         }
-        await page.click('#cloud-backup-show-code-btn');
-        await page.waitForSelector('#cloud-backup-recovery-dialog[open]');
-        const localRecoveryProfile = await page.evaluate(() => window.TentenCloudBackup.readProfile());
-        if (!localRecoveryProfile || localRecoveryProfile.revision || localRecoveryProfile.pendingMilestones.length !== 0) {
-            throw new Error('viewing a recovery code must not create a cloud backup');
+        if (await page.locator('#cloud-backup-delete-btn').count()) {
+            throw new Error('cloud-backup deletion must not be exposed in the learner UI');
         }
-        await page.click('#cloud-backup-recovery-close-btn');
+        await page.click('#cloud-backup-manage-close-btn');
         if (process.env.TENTEN_CAPTURE) {
             await page.screenshot({ path: process.env.TENTEN_CAPTURE, fullPage: true });
         }

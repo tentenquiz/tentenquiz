@@ -298,25 +298,24 @@
                 <div class="cloud-backup-dialog-card cloud-backup-manage-card">
                     <h3 id="cloud-backup-manage-title" data-i18n="learningRecordsTitle">Manage learning records</h3>
                     <p id="cloud-backup-manage-status" class="cloud-backup-manage-status" aria-live="polite"></p>
-                    <span class="cloud-backup-private" data-i18n="cloudBackupEncrypted">🔒 Encrypted</span>
+                    <span class="cloud-backup-private" data-i18n="cloudBackupEncrypted">🔒 Safely protected</span>
 
                     <div class="cloud-backup-dialog-actions cloud-backup-manage-actions">
                         <button id="cloud-backup-show-code-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupShowCode">View recovery code</button>
                         <button id="cloud-backup-restore-open-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupRestore">Load records from another device</button>
                     </div>
 
-                    <button id="cloud-backup-delete-btn" class="learning-records-btn cloud-backup-delete-btn" type="button" data-i18n="cloudBackupDelete">Delete cloud backup</button>
                     <button id="cloud-backup-manage-close-btn" class="learning-records-btn cloud-backup-secondary-btn cloud-backup-manage-close" type="button" data-i18n="close">Close</button>
                 </div>
             </dialog>
 
             <dialog id="cloud-backup-recovery-dialog" class="cloud-backup-dialog" aria-labelledby="cloud-backup-recovery-title">
                 <form method="dialog" class="cloud-backup-dialog-card">
-                    <h3 id="cloud-backup-recovery-title" data-i18n="cloudBackupRecoveryTitle">Keep your recovery code safe</h3>
-                    <p data-i18n="cloudBackupRecoveryDescription">Use this code or QR on a new device to restore all learning records.</p>
+                    <h3 id="cloud-backup-recovery-title" data-i18n="cloudBackupRecoveryTitle">Your latest learning records are safely saved</h3>
+                    <p data-i18n="cloudBackupRecoveryDescription">Keep this code to continue from where you left off on another device.</p>
                     <div id="cloud-backup-qr" class="cloud-backup-qr" aria-hidden="true"></div>
                     <code id="cloud-backup-recovery-code" class="cloud-backup-recovery-code"></code>
-                    <p class="cloud-backup-warning" data-i18n="cloudBackupRecoveryWarning">Anyone with this code can load your learning records. Do not share it.</p>
+                    <p class="cloud-backup-warning" data-i18n="cloudBackupRecoveryWarning">This recovery code is the key to your learning records. Do not share it with anyone.</p>
                     <div class="cloud-backup-dialog-actions">
                         <button id="cloud-backup-copy-code-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupCopyCode">Copy code</button>
                         <button id="cloud-backup-download-code-btn" class="learning-records-btn cloud-backup-secondary-btn" type="button" data-i18n="cloudBackupDownloadCode">Save code file</button>

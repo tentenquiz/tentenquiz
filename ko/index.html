@@ -304,25 +304,24 @@
                 <div class="cloud-backup-dialog-card cloud-backup-manage-card">
                     <h3 id="cloud-backup-manage-title" data-i18n="learningRecordsTitle">학습 기록 관리</h3>
                     <p id="cloud-backup-manage-status" class="cloud-backup-manage-status" aria-live="polite"></p>
-                    <span class="cloud-backup-private" data-i18n="cloudBackupEncrypted">🔒 암호화 저장</span>
+                    <span class="cloud-backup-private" data-i18n="cloudBackupEncrypted">🔒 안전하게 보호됨</span>
 
                     <div class="cloud-backup-dialog-actions cloud-backup-manage-actions">
                         <button id="cloud-backup-show-code-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupShowCode">복구 코드 보기</button>
                         <button id="cloud-backup-restore-open-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupRestore">다른 기기 기록 불러오기</button>
                     </div>
 
-                    <button id="cloud-backup-delete-btn" class="learning-records-btn cloud-backup-delete-btn" type="button" data-i18n="cloudBackupDelete">클라우드 백업 삭제</button>
                     <button id="cloud-backup-manage-close-btn" class="learning-records-btn cloud-backup-secondary-btn cloud-backup-manage-close" type="button" data-i18n="close">닫기</button>
                 </div>
             </dialog>
 
             <dialog id="cloud-backup-recovery-dialog" class="cloud-backup-dialog" aria-labelledby="cloud-backup-recovery-title">
                 <form method="dialog" class="cloud-backup-dialog-card">
-                    <h3 id="cloud-backup-recovery-title" data-i18n="cloudBackupRecoveryTitle">복구 코드를 안전하게 보관하세요</h3>
-                    <p data-i18n="cloudBackupRecoveryDescription">새 기기에서 이 코드나 QR을 사용하면 모든 학습 기록을 복원할 수 있습니다.</p>
+                    <h3 id="cloud-backup-recovery-title" data-i18n="cloudBackupRecoveryTitle">최신 학습 기록을 안전하게 저장했어요</h3>
+                    <p data-i18n="cloudBackupRecoveryDescription">이 코드를 보관하면 다른 기기에서도 지금까지의 학습을 이어갈 수 있어요.</p>
                     <div id="cloud-backup-qr" class="cloud-backup-qr" aria-hidden="true"></div>
                     <code id="cloud-backup-recovery-code" class="cloud-backup-recovery-code"></code>
-                    <p class="cloud-backup-warning" data-i18n="cloudBackupRecoveryWarning">이 코드를 아는 사람은 학습 기록을 불러올 수 있습니다. 다른 사람에게 보내지 마세요.</p>
+                    <p class="cloud-backup-warning" data-i18n="cloudBackupRecoveryWarning">복구 코드는 학습 기록을 여는 열쇠예요. 다른 사람과 공유하지 마세요.</p>
                     <div class="cloud-backup-dialog-actions">
                         <button id="cloud-backup-copy-code-btn" class="learning-records-btn cloud-backup-primary-btn" type="button" data-i18n="cloudBackupCopyCode">코드 복사</button>
                         <button id="cloud-backup-download-code-btn" class="learning-records-btn cloud-backup-secondary-btn" type="button" data-i18n="cloudBackupDownloadCode">코드 파일 저장</button>

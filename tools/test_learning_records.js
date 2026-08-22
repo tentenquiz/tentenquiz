@@ -108,6 +108,9 @@ if (!html.includes('id="cloud-backup-show-code-btn" class="learning-records-btn 
     !html.includes('id="cloud-backup-restore-open-btn" class="learning-records-btn cloud-backup-primary-btn"')) {
     throw new Error('both cloud recovery actions must use the same primary green style');
 }
+if (html.includes('id="cloud-backup-delete-btn"')) {
+    throw new Error('cloud-backup deletion must not be exposed in the learner UI');
+}
 if (!source.includes("downloadPayload(currentPayload, 'tentenquiz-before-restore')")) {
     throw new Error('restore must save the current records as a safety backup first');
 }
@@ -116,4 +119,4 @@ console.log('OK: 132 language-pair databases can be backed up in one validated f
 console.log('OK: invalid, foreign, duplicate, and unsafe backups are rejected');
 console.log('OK: restore creates a safety backup before replacing current records');
 console.log('OK: encrypted backup validation and restore include daily streak achievements');
-console.log('OK: file-backup controls are absent and cloud recovery actions share one style');
+console.log('OK: file/delete controls are absent and cloud recovery actions share one style');

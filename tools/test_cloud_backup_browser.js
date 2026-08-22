@@ -220,9 +220,21 @@ async function completeSectionMilestone(page, stage, section) {
         await completeSectionMilestone(firstPage, 1, 'people_relations');
         await firstPage.waitForFunction(() => {
             const profile = window.TentenCloudBackup.readProfile();
-            return profile && profile.recordCount === 26 && profile.dirty === false;
+            return profile && profile.dirty === true && profile.pendingMilestones.length > 0;
         });
-        if (putCount !== 2) throw new Error(`second milestone backup did not run: ${putCount}`);
+        if (putCount !== 1) throw new Error(`same-day milestone ignored the daily upload limit: ${putCount}`);
+
+        await firstPage.click('#cloud-backup-manage-open-btn');
+        await firstPage.click('#cloud-backup-show-code-btn');
+        await firstPage.waitForSelector('#cloud-backup-recovery-dialog[open]');
+        await firstPage.waitForFunction(() => {
+            const profile = window.TentenCloudBackup.readProfile();
+            return profile && profile.recordCount === 26 && profile.dirty === false && profile.pendingMilestones.length === 0;
+        });
+        if (putCount !== 2) throw new Error(`viewing the recovery code did not force a fresh backup: ${putCount}`);
+        const refreshedRecoveryCode = (await firstPage.locator('#cloud-backup-recovery-code').textContent()).trim();
+        if (refreshedRecoveryCode !== recoveryCode) throw new Error('forcing a fresh backup unexpectedly changed the recovery code');
+        await firstPage.click('#cloud-backup-recovery-close-btn');
         if (process.env.TENTEN_CLOUD_CAPTURE) {
             await firstPage.screenshot({ path: process.env.TENTEN_CLOUD_CAPTURE, fullPage: true });
         }
@@ -254,11 +266,22 @@ async function completeSectionMilestone(page, stage, section) {
         await completeSectionMilestone(secondPage, 2, 'nature_weather');
         await secondPage.waitForFunction(() => {
             const profile = window.TentenCloudBackup.readProfile();
+            return profile && profile.dirty === true && profile.pendingMilestones.length > 0;
+        });
+        await secondPage.click('#cloud-backup-manage-open-btn');
+        await secondPage.click('#cloud-backup-show-code-btn');
+        await secondPage.waitForSelector('#cloud-backup-recovery-dialog[open]');
+        await secondPage.waitForFunction(() => {
+            const profile = window.TentenCloudBackup.readProfile();
             return profile && profile.recordCount === 27 && profile.dirty === false;
         });
+        if (putCount !== 3) throw new Error(`new-device recovery-code view did not refresh the backup: ${putCount}`);
+        await secondPage.click('#cloud-backup-recovery-close-btn');
 
         await addProgress(firstPage, 'cloud-progress-conflict');
         await completeSectionMilestone(firstPage, 2, 'people_relations');
+        await firstPage.click('#cloud-backup-manage-open-btn');
+        await firstPage.click('#cloud-backup-show-code-btn');
         await firstPage.waitForFunction(() => {
             const profile = window.TentenCloudBackup.readProfile();
             return profile && profile.conflict === true;
@@ -266,21 +289,15 @@ async function completeSectionMilestone(page, stage, section) {
         const conflictText = (await firstPage.locator('#cloud-backup-status').textContent()).trim();
         if (!conflictText.includes('다른 기기')) throw new Error(`conflict was not explained: ${conflictText}`);
 
-        await secondPage.click('#cloud-backup-manage-open-btn');
-        await secondPage.click('#cloud-backup-delete-btn');
-        await secondPage.waitForFunction(() => window.TentenCloudBackup.readProfile() === null);
-        if (backups.size !== 0) throw new Error('cloud backup was not deleted');
-        const recordsAfterDelete = await secondPage.evaluate(() => window.TentenLearningRecords.createBackupPayload());
-        if (recordsAfterDelete.recordCount !== 27) throw new Error('deleting cloud backup removed local records');
-        if (recordsAfterDelete.dailyQuizAchievements?.[0]?.bestStreak !== 1) {
-            throw new Error('deleting cloud backup removed the local daily streak');
+        if (await secondPage.locator('#cloud-backup-delete-btn').count()) {
+            throw new Error('cloud-backup deletion must not be exposed in the learner UI');
         }
 
         console.log('OK: ordinary learning changes stay local and the first section milestone uploads only encrypted data');
-        console.log('OK: replaying a completed section creates no backup, while a new milestone creates exactly one');
+        console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
         console.log('OK: a recovery code restores all records and daily streak achievements on a new browser profile');
         console.log('OK: stale devices cannot silently overwrite newer cloud records');
-        console.log('OK: deleting the cloud copy preserves local learning records');
+        console.log('OK: cloud-backup deletion is not exposed in the learner UI');
 
         await firstContext.close();
         await secondContext.close();

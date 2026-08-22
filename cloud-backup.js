@@ -551,7 +551,6 @@
         if (!controls) return;
         const profile = readProfile();
         controls.showCode.hidden = false;
-        controls.deleteButton.hidden = !(profile && profile.revision);
         if (!profile) {
             setStatus('cloudBackupMilestoneReady', {}, 'cloudBackupCompactStatus');
         } else if (profile.conflict) {
@@ -572,7 +571,7 @@
     function setBusy(busy, statusKey) {
         if (!controls) return;
         controls.section.setAttribute('aria-busy', String(busy));
-        [controls.manageOpen, controls.showCode, controls.restoreOpen, controls.deleteButton, controls.manageClose]
+        [controls.manageOpen, controls.showCode, controls.restoreOpen, controls.manageClose]
             .filter(Boolean)
             .forEach((button) => { button.disabled = busy; });
         if (statusKey) setStatus(statusKey);
@@ -668,6 +667,32 @@
             : false);
         updateControls();
         return profile;
+    }
+
+    async function saveLatestRecordsBeforeShowingRecoveryCode() {
+        let profile = await getOrCreateLocalRecoveryProfile();
+        if (profile.conflict) {
+            throw new CloudBackupConflictError('A newer cloud backup must be loaded first.');
+        }
+        if (!global.navigator.onLine) {
+            const error = new Error('The device is offline.');
+            error.code = 'offline';
+            throw error;
+        }
+
+        // 복구 코드는 다른 기기로 옮길 때 쓰므로, 표시 전에 현재 기록을 반드시 새로 올립니다.
+        const pendingMilestones = Array.from(new Set([
+            ...(Array.isArray(profile.pendingMilestones) ? profile.pendingMilestones : []),
+            'recovery-code-view'
+        ])).slice(-100);
+        profile = writeProfile({ ...profile, dirty: true, pendingMilestones });
+        updateControls();
+
+        const updated = await syncNow({ force: true });
+        if (!updated || !updated.revision) {
+            throw new Error('The latest cloud backup was not confirmed.');
+        }
+        return updated;
     }
 
     async function copyText(value) {
@@ -933,7 +958,6 @@
             manageClose: global.document.getElementById('cloud-backup-manage-close-btn'),
             showCode: global.document.getElementById('cloud-backup-show-code-btn'),
             restoreOpen: global.document.getElementById('cloud-backup-restore-open-btn'),
-            deleteButton: global.document.getElementById('cloud-backup-delete-btn'),
             recoveryDialog: global.document.getElementById('cloud-backup-recovery-dialog'),
             recoveryCode: global.document.getElementById('cloud-backup-recovery-code'),
             qr: global.document.getElementById('cloud-backup-qr'),
@@ -963,13 +987,18 @@
         });
         controls.manageClose.addEventListener('click', () => closeDialog(controls.manageDialog));
         controls.showCode.addEventListener('click', async () => {
+            setBusy(true, 'cloudBackupSaving');
             try {
-                const profile = await getOrCreateLocalRecoveryProfile();
+                const profile = await saveLatestRecordsBeforeShowingRecoveryCode();
                 closeDialog(controls.manageDialog);
                 showRecoveryCode(profile.recoveryCode);
             } catch (error) {
                 console.error('복구 코드 준비 실패:', error);
-                setStatus('cloudBackupError');
+                if (error instanceof CloudBackupConflictError) setStatus('cloudBackupConflict');
+                else if (error && error.code === 'too-large') setStatus('cloudBackupTooLarge');
+                else setStatus(global.navigator.onLine ? 'cloudBackupError' : 'cloudBackupOffline');
+            } finally {
+                setBusy(false);
             }
         });
         controls.restoreOpen.addEventListener('click', () => {
@@ -992,35 +1021,6 @@
             const restored = await restoreFromCode(code);
             if (restored) closeDialog(controls.restoreDialog);
         });
-        controls.deleteButton.addEventListener('click', async () => {
-            const profile = readProfile();
-            if (!profile || !global.confirm(translate('cloudBackupDeleteConfirm'))) return;
-            setBusy(true, 'cloudBackupDeleting');
-            try {
-                // 충돌 상태였다면 revision 검사를 건너뛰어야 잠금에서 빠져나올 수 있습니다.
-                await deleteCloudBackup(profile, { force: Boolean(profile.conflict) });
-                updateControls();
-                global.alert(translate('cloudBackupDeleteSuccess'));
-            } catch (error) {
-                if (error && error.code === 'conflict') {
-                    // 마지막 안전망: 첫 시도가 충돌로 실패하면 강제 삭제로 한 번 더.
-                    try {
-                        await deleteCloudBackup(profile, { force: true });
-                        updateControls();
-                        global.alert(translate('cloudBackupDeleteSuccess'));
-                        return;
-                    } catch (forceError) {
-                        console.error('클라우드 백업 강제 삭제 실패:', forceError);
-                    }
-                }
-                console.error('클라우드 백업 삭제 실패:', error);
-                setStatus('cloudBackupError');
-                global.alert(translate('cloudBackupError'));
-            } finally {
-                setBusy(false);
-            }
-        });
-
         const hashMatch = global.location.hash.match(/^#tenten-recover=(.+)$/);
         if (hashMatch) {
             const code = decodeURIComponent(hashMatch[1]);
