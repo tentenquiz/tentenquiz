@@ -51,7 +51,11 @@ function findBrowserExecutable() {
         const executablePath = findBrowserExecutable();
         if (!executablePath) throw new Error('No Chromium-based browser is available for the browser test');
         browser = await chromium.launch({ headless: true, executablePath });
-        const context = await browser.newContext();
+        const context = await browser.newContext({
+            viewport: { width: 390, height: 844 },
+            isMobile: true,
+            hasTouch: true
+        });
         const page = await context.newPage();
         await page.goto(`http://127.0.0.1:${port}/?native=ko&learn=vi`, { waitUntil: 'domcontentloaded' });
         await page.waitForSelector('#cloud-backup-manage-open-btn', { state: 'attached' });

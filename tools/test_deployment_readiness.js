@@ -101,6 +101,18 @@ if (!exists('_headers')) {
         }
     }
 
+    ['/cloud-backup.js', '/i18n.js'].forEach((scriptPath) => {
+        const block = blocks.get(scriptPath);
+        if (!block) {
+            fail(`_headers 에 "${scriptPath}" 캐시 재검증 규칙이 없습니다.`);
+            return;
+        }
+        const cacheControl = String(block.get('cache-control') || '').toLowerCase();
+        if (!cacheControl.includes('max-age=0') && !cacheControl.includes('no-cache') && !cacheControl.includes('no-store')) {
+            fail(`${scriptPath} 의 Cache-Control 이 새 배포를 즉시 재검증하지 않습니다 (현재: "${cacheControl}").`);
+        }
+    });
+
     ['/assets/*', '/vendor/*'].forEach((pattern) => {
         const block = blocks.get(pattern);
         if (!block || !String(block.get('cache-control') || '').includes('immutable')) {
