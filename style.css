@@ -2659,6 +2659,18 @@ body > canvas {
     backdrop-filter: blur(3px);
 }
 
+/* Android 카메라·메신저 WebView가 닫힌 dialog의 top-layer를 한 프레임 이상
+   붙잡아도 어두운 배경막이 새 화면에 남지 않도록 이동 직전에 무력화합니다. */
+.cloud-backup-dialog.cloud-backup-dialog-releasing,
+.cloud-backup-dialog.cloud-backup-dialog-releasing[open] {
+    display: none !important;
+}
+
+.cloud-backup-dialog.cloud-backup-dialog-releasing::backdrop {
+    background: transparent !important;
+    backdrop-filter: none !important;
+}
+
 .cloud-backup-dialog-card {
     margin: 0;
     padding: 24px;

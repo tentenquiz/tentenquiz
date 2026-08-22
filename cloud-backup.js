@@ -3,6 +3,7 @@
 
     const CONFIG = global.TENTEN_CLOUD_BACKUP_CONFIG || {};
     const PROFILE_KEY = 'tenten.cloudBackupProfile.v1';
+    const RESTORE_NOTICE_KEY = 'tenten.cloudBackupRestoreNotice.v1';
     const CLOUD_FORMAT = 'tentenquiz-encrypted-learning-records';
     const CLOUD_VERSION = 1;
     const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -585,8 +586,23 @@
 
     function closeDialog(dialog) {
         if (!dialog) return;
-        if (typeof dialog.close === 'function') dialog.close();
-        else dialog.removeAttribute('open');
+        try {
+            if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+        } catch (_error) {
+            // 일부 모바일 인앱 브라우저는 이동 직전 close()에서 예외를 냅니다.
+        }
+        // close()가 성공한 척하면서 open 속성을 남기는 WebView도 있어 한 번 더 정리합니다.
+        dialog.removeAttribute('open');
+    }
+
+    function releaseDialogsBeforeNavigation() {
+        global.document.querySelectorAll('dialog').forEach((dialog) => {
+            dialog.classList.add('cloud-backup-dialog-releasing');
+            dialog.setAttribute('aria-hidden', 'true');
+            if ('inert' in dialog) dialog.inert = true;
+            closeDialog(dialog);
+            dialog.hidden = true;
+        });
     }
 
     function waitForDialogToLeaveTopLayer() {
@@ -633,7 +649,7 @@
         openDialog(controls.recoveryDialog);
     }
 
-    function showMilestoneBackupToast() {
+    function showBackupToast(message) {
         let toast = global.document.getElementById('cloud-backup-toast');
         if (!toast) {
             toast = global.document.createElement('div');
@@ -644,9 +660,40 @@
             global.document.body.appendChild(toast);
         }
         global.clearTimeout(backupToastTimer);
-        toast.textContent = translate('cloudBackupMilestoneSaved');
+        toast.textContent = message;
         toast.classList.add('is-visible');
         backupToastTimer = global.setTimeout(() => toast.classList.remove('is-visible'), 2800);
+    }
+
+    function showMilestoneBackupToast() {
+        showBackupToast(translate('cloudBackupMilestoneSaved'));
+    }
+
+    function rememberRestoreNotice(recordCount) {
+        try {
+            global.sessionStorage.setItem(RESTORE_NOTICE_KEY, JSON.stringify({
+                recordCount: Number(recordCount) || 0,
+                createdAt: Date.now()
+            }));
+        } catch (_error) {
+            // 저장이 막힌 인앱 브라우저에서는 알림만 생략합니다. 복원 기록에는 영향이 없습니다.
+        }
+    }
+
+    function consumeRestoreNotice() {
+        try {
+            const raw = global.sessionStorage.getItem(RESTORE_NOTICE_KEY);
+            global.sessionStorage.removeItem(RESTORE_NOTICE_KEY);
+            if (!raw) return null;
+            const notice = JSON.parse(raw);
+            if (
+                !notice || !Number.isFinite(notice.recordCount)
+                || !Number.isFinite(notice.createdAt) || Date.now() - notice.createdAt > 300000
+            ) return null;
+            return notice.recordCount;
+        } catch (_error) {
+            return null;
+        }
     }
 
     function scheduleRecoveryPrompt() {
@@ -945,11 +992,12 @@
                 needsRecoveryPrompt: false
             });
 
-            // 모바일 카메라의 인앱 브라우저에서는 이동을 먼저 시작하면 이후의
-            // dialog.close() 가 실행되지 않아 ::backdrop 색이 남을 수 있습니다.
-            closeDialog(controls && controls.restoreDialog);
+            // 모바일 카메라의 인앱 브라우저에서는 dialog를 닫은 직후 네이티브 alert와
+            // 페이지 이동이 겹치면 닫힌 ::backdrop만 화면 합성에 남을 수 있습니다.
+            // 모든 top-layer 창을 숨기고 성공 안내는 새 화면의 DOM 토스트로 보여 줍니다.
+            rememberRestoreNotice(incoming.recordCount);
+            releaseDialogsBeforeNavigation();
             await waitForDialogToLeaveTopLayer();
-            global.alert(translate('cloudBackupLoadSuccess', { count: incoming.recordCount }));
             if (typeof records.reloadWithRestoredPreferences === 'function') records.reloadWithRestoredPreferences();
             else global.location.reload();
             return true;
@@ -1001,6 +1049,12 @@
         }
         controls.section.hidden = false;
         updateControls();
+        const restoredRecordCount = consumeRestoreNotice();
+        if (restoredRecordCount !== null) {
+            global.setTimeout(() => showBackupToast(translate('cloudBackupLoadSuccess', {
+                count: restoredRecordCount
+            })), 180);
+        }
 
         controls.manageOpen.addEventListener('click', () => {
             updateControls();

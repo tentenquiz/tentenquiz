@@ -247,25 +247,52 @@ async function completeSectionMilestone(page, stage, section) {
         });
         const secondPage = await secondContext.newPage();
         await configurePage(secondPage, endpoint);
-        secondPage.on('dialog', (dialog) => dialog.accept());
+        const secondPageDialogTypes = [];
+        secondPage.on('dialog', (dialog) => {
+            secondPageDialogTypes.push(dialog.type());
+            dialog.accept();
+        });
         await secondPage.goto(`${origin}/?native=ko&learn=vi`, { waitUntil: 'domcontentloaded' });
         await secondPage.click('#cloud-backup-manage-open-btn');
         await secondPage.click('#cloud-backup-restore-open-btn');
         await secondPage.fill('#cloud-backup-restore-code-input', recoveryCode.toLowerCase());
         await secondPage.evaluate(() => {
             window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ = false;
+            // 일부 Android 카메라 WebView에서 close()가 호출돼도 open/top-layer가
+            // 남는 현상을 흉내 내어 강제 해제 경로를 검증합니다.
+            document.getElementById('cloud-backup-restore-dialog').close = () => {};
             window.TentenLearningRecords.reloadWithRestoredPreferences = () => {
                 window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ = true;
             };
         });
         await secondPage.click('#cloud-backup-restore-form button[type="submit"]');
         await secondPage.waitForFunction(() => window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ === true);
-        const restoreDialogStillOpen = await secondPage.locator('#cloud-backup-restore-dialog[open]').count();
-        if (restoreDialogStillOpen) {
-            throw new Error('restore navigation was requested before the mobile dialog backdrop was removed');
+        const releasedDialogState = await secondPage.evaluate(() => {
+            const dialog = document.getElementById('cloud-backup-restore-dialog');
+            const backdrop = getComputedStyle(dialog, '::backdrop');
+            return {
+                open: dialog.open || dialog.hasAttribute('open'),
+                hidden: dialog.hidden,
+                releasing: dialog.classList.contains('cloud-backup-dialog-releasing'),
+                backdropColor: backdrop.backgroundColor,
+                backdropFilter: backdrop.backdropFilter
+            };
+        });
+        if (
+            releasedDialogState.open || !releasedDialogState.hidden || !releasedDialogState.releasing
+            || releasedDialogState.backdropColor !== 'rgba(0, 0, 0, 0)'
+            || releasedDialogState.backdropFilter !== 'none'
+        ) {
+            throw new Error(`restore navigation kept a mobile dialog backdrop: ${JSON.stringify(releasedDialogState)}`);
+        }
+        if (secondPageDialogTypes.includes('alert')) {
+            throw new Error('restore success alert opened before the mobile dialog backdrop was released');
         }
         await secondPage.reload({ waitUntil: 'domcontentloaded' });
         await secondPage.waitForFunction(() => Boolean(window.TentenLearningRecords && window.TentenCloudBackup));
+        await secondPage.waitForSelector('#cloud-backup-toast.is-visible');
+        const restoreNotice = (await secondPage.locator('#cloud-backup-toast').textContent()).trim();
+        if (!restoreNotice.includes('26')) throw new Error(`restored-record toast is missing its count: ${restoreNotice}`);
         const restored = await secondPage.evaluate(() => window.TentenLearningRecords.createBackupPayload());
         if (restored.recordCount !== 26) throw new Error(`new-device restore returned ${restored.recordCount} records`);
         if (
@@ -310,7 +337,7 @@ async function completeSectionMilestone(page, stage, section) {
         console.log('OK: ordinary learning changes stay local and the first section milestone uploads only encrypted data');
         console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
         console.log('OK: a recovery code restores all records and daily streak achievements on a new browser profile');
-        console.log('OK: the mobile restore dialog leaves the top layer before navigation begins');
+        console.log('OK: the mobile restore dialog and native alert leave no backdrop before navigation');
         console.log('OK: stale devices cannot silently overwrite newer cloud records');
         console.log('OK: cloud-backup deletion is not exposed in the learner UI');
 
