@@ -1447,7 +1447,7 @@ let TOTAL_QUESTIONS = QUIZ_QUESTION_LIMIT;
 const TIME_PER_QUESTION = 10;
 const AUTO_REPEAT_GAP_MS = 400;
 const AUTO_REPEAT_STOP_THRESHOLD = 3;
-const ANSWER_REVEAL_MS = 5000;
+const ANSWER_REVEAL_POST_AUDIO_MS = 500;
 const ANSWER_REVEAL_ANIM_MS = 300;
 const ANSWER_REVEAL_EXIT_MS = 180;
 const OPTION_HIGHLIGHT_KEYWORDS = [
@@ -2340,35 +2340,23 @@ function cancelScheduledQuestionAdvance() {
 function scheduleAnswerRevealAdvance(answerAudioDone = Promise.resolve()) {
     cancelScheduledQuestionAdvance();
     const sequenceToken = answerRevealAdvanceToken;
-    let revealTimeElapsed = false;
-    let answerAudioFinished = false;
-    let advancing = false;
-
-    const advanceWhenReady = () => {
-        if (
-            advancing ||
-            sequenceToken !== answerRevealAdvanceToken ||
-            !revealTimeElapsed ||
-            !answerAudioFinished
-        ) {
-            return;
-        }
-        advancing = true;
-        playAnswerRevealExit(goToNextQuestion);
-    };
+    const feedbackWaitStartedAt = Date.now();
 
     Promise.resolve(answerAudioDone)
         .catch(() => undefined)
         .then(() => {
-            answerAudioFinished = true;
-            advanceWhenReady();
-        });
+            if (sequenceToken !== answerRevealAdvanceToken) return;
 
-    advanceQuestionTimeoutId = setTimeout(() => {
-        advanceQuestionTimeoutId = null;
-        revealTimeElapsed = true;
-        advanceWhenReady();
-    }, Math.max(0, ANSWER_REVEAL_MS - ANSWER_REVEAL_EXIT_MS));
+            advanceQuestionTimeoutId = setTimeout(() => {
+                advanceQuestionTimeoutId = null;
+                if (sequenceToken !== answerRevealAdvanceToken) return;
+
+                playAnswerRevealExit(() => {
+                    excludedTimeMs += Math.max(0, Date.now() - feedbackWaitStartedAt);
+                    goToNextQuestion();
+                });
+            }, Math.max(0, ANSWER_REVEAL_POST_AUDIO_MS - ANSWER_REVEAL_EXIT_MS));
+        });
 }
 
 function shuffleArray(arr) {
@@ -2810,8 +2798,6 @@ async function handleTimeout() {
 
     recordDailyQuizAttemptResult(q, 'timeout');
 
-    excludedTimeMs += ANSWER_REVEAL_MS;
-
     scheduleAnswerRevealAdvance(answerAudioDone);
 }
 
@@ -3035,7 +3021,6 @@ async function checkAnswer(selectedIdx) {
 
         recordDailyQuizAttemptResult(q, 'wrong');
 
-        excludedTimeMs += ANSWER_REVEAL_MS;
         scheduleAnswerRevealAdvance(answerAudioDone);
     }
 }
