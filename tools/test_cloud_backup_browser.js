@@ -239,7 +239,12 @@ async function completeSectionMilestone(page, stage, section) {
             await firstPage.screenshot({ path: process.env.TENTEN_CLOUD_CAPTURE, fullPage: true });
         }
 
-        const secondContext = await browser.newContext({ acceptDownloads: true });
+        const secondContext = await browser.newContext({
+            acceptDownloads: true,
+            viewport: { width: 390, height: 844 },
+            isMobile: true,
+            hasTouch: true
+        });
         const secondPage = await secondContext.newPage();
         await configurePage(secondPage, endpoint);
         secondPage.on('dialog', (dialog) => dialog.accept());
@@ -247,10 +252,19 @@ async function completeSectionMilestone(page, stage, section) {
         await secondPage.click('#cloud-backup-manage-open-btn');
         await secondPage.click('#cloud-backup-restore-open-btn');
         await secondPage.fill('#cloud-backup-restore-code-input', recoveryCode.toLowerCase());
-        await Promise.all([
-            secondPage.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-            secondPage.click('#cloud-backup-restore-form button[type="submit"]')
-        ]);
+        await secondPage.evaluate(() => {
+            window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ = false;
+            window.TentenLearningRecords.reloadWithRestoredPreferences = () => {
+                window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ = true;
+            };
+        });
+        await secondPage.click('#cloud-backup-restore-form button[type="submit"]');
+        await secondPage.waitForFunction(() => window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ === true);
+        const restoreDialogStillOpen = await secondPage.locator('#cloud-backup-restore-dialog[open]').count();
+        if (restoreDialogStillOpen) {
+            throw new Error('restore navigation was requested before the mobile dialog backdrop was removed');
+        }
+        await secondPage.reload({ waitUntil: 'domcontentloaded' });
         await secondPage.waitForFunction(() => Boolean(window.TentenLearningRecords && window.TentenCloudBackup));
         const restored = await secondPage.evaluate(() => window.TentenLearningRecords.createBackupPayload());
         if (restored.recordCount !== 26) throw new Error(`new-device restore returned ${restored.recordCount} records`);
@@ -296,6 +310,7 @@ async function completeSectionMilestone(page, stage, section) {
         console.log('OK: ordinary learning changes stay local and the first section milestone uploads only encrypted data');
         console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
         console.log('OK: a recovery code restores all records and daily streak achievements on a new browser profile');
+        console.log('OK: the mobile restore dialog leaves the top layer before navigation begins');
         console.log('OK: stale devices cannot silently overwrite newer cloud records');
         console.log('OK: cloud-backup deletion is not exposed in the learner UI');
 

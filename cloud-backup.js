@@ -584,8 +584,24 @@
     }
 
     function closeDialog(dialog) {
+        if (!dialog) return;
         if (typeof dialog.close === 'function') dialog.close();
         else dialog.removeAttribute('open');
+    }
+
+    function waitForDialogToLeaveTopLayer() {
+        return new Promise((resolve) => {
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                global.clearTimeout(fallbackTimer);
+                resolve();
+            };
+            const fallbackTimer = global.setTimeout(finish, 120);
+            if (typeof global.requestAnimationFrame !== 'function') return;
+            global.requestAnimationFrame(() => global.requestAnimationFrame(finish));
+        });
     }
 
     function recoveryUrl(recoveryCode) {
@@ -928,6 +944,11 @@
                 pendingMilestones: [],
                 needsRecoveryPrompt: false
             });
+
+            // 모바일 카메라의 인앱 브라우저에서는 이동을 먼저 시작하면 이후의
+            // dialog.close() 가 실행되지 않아 ::backdrop 색이 남을 수 있습니다.
+            closeDialog(controls && controls.restoreDialog);
+            await waitForDialogToLeaveTopLayer();
             global.alert(translate('cloudBackupLoadSuccess', { count: incoming.recordCount }));
             if (typeof records.reloadWithRestoredPreferences === 'function') records.reloadWithRestoredPreferences();
             else global.location.reload();
