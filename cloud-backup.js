@@ -381,7 +381,10 @@
                 const ownerVerifier = toBase64Url(await sha256(encoder.encode(writeToken)));
                 await firestore.runTransaction(db, async (transaction) => {
                     const snapshot = await transaction.get(reference);
-                    if (!snapshot.exists()) return;
+                    if (!snapshot.exists()) {
+                        if (expectedRevision) throw storeError('not-found', 'Firestore backup was already consumed');
+                        return;
+                    }
                     const metadata = snapshot.data();
                     if (expectedRevision && metadata.revision !== expectedRevision) {
                         throw storeError('conflict', 'A newer Firestore backup exists');
@@ -436,19 +439,21 @@
     // 끊기면, 로컬 revision 만 옛 값으로 남아 이후 모든 동기화가 'conflict' 로
     // 막히고 삭제 버튼까지 함께 잠깁니다.
     // 원격 백업이 "같은 복구 코드 소유"임이 확인되면 실제 충돌이 아니라
-    // 응답 유실이므로, 서버의 현재 revision 을 다시 읽어 한 번만 재시도합니다.
-    async function resolveOwnedRemoteRevision(credentials) {
+    // 응답 유실이므로 서버 revision으로 재시도합니다. 원격 문서가 사라졌다면
+    // 1회용 코드가 소비된 것이므로 기존 코드를 되살리지 않고 새 코드로 회전합니다.
+    async function inspectRemoteBackup(credentials) {
         const store = await getFirebaseStore();
-        if (typeof store.headBackup !== 'function') return null;
+        if (typeof store.headBackup !== 'function') return { state: 'unknown', revision: '' };
         try {
             const head = await store.headBackup({
                 backupId: credentials.backupId,
                 writeToken: credentials.writeToken
             });
-            if (!head.exists || !head.owned) return null;
-            return head.revision || '';
+            if (!head.exists) return { state: 'missing', revision: '' };
+            if (!head.owned) return { state: 'foreign', revision: '' };
+            return { state: 'owned', revision: head.revision || '' };
         } catch (_error) {
-            return null;
+            return { state: 'unknown', revision: '' };
         }
     }
 
@@ -480,13 +485,24 @@
         } catch (error) {
             if (!error || error.code !== 'conflict') throw error;
 
-            const ownedRevision = await resolveOwnedRemoteRevision(encrypted.credentials);
-            if (ownedRevision === null) {
-                // 원격 백업이 없거나 다른 복구 코드 소유 → 진짜 충돌.
+            const remote = await inspectRemoteBackup(encrypted.credentials);
+            if (remote.state === 'missing' && profile.revision) {
+                // 1회용 복구 코드가 다른 기기에서 정상 소비됐습니다. 기존 코드는
+                // 절대 되살리지 않고 새 코드로 현재 기기의 다음 백업을 시작합니다.
+                return uploadProfile({
+                    ...profile,
+                    recoveryCode: await createRecoveryCode(),
+                    revision: '',
+                    lastSyncedAt: '',
+                    conflict: false
+                });
+            }
+            if (remote.state !== 'owned') {
+                // 소유가 다르거나 서버 상태를 확인할 수 없음 → 진짜 충돌.
                 throw new CloudBackupConflictError('Cloud backup conflict');
             }
             try {
-                stored = await put(ownedRevision);
+                stored = await put(remote.revision);
                 console.info('클라우드 백업 revision 자가 복구 완료');
             } catch (retryError) {
                 if (retryError && retryError.code === 'conflict') {
@@ -515,6 +531,23 @@
         });
         const decrypted = await decryptPayload(stored.body, recoveryCode);
         return { ...decrypted, revision: stored.revision };
+    }
+
+    async function consumeFetchedCloudBackup(remote) {
+        if (!remote || !remote.credentials || !remote.revision) {
+            throw storeError('invalid', 'Invalid recovery backup claim');
+        }
+        const store = await getFirebaseStore();
+        if (!store || typeof store.deleteBackup !== 'function') {
+            throw storeError('unavailable', 'One-time recovery deletion is unavailable');
+        }
+        // getBackup에서 읽은 바로 그 revision만 삭제합니다. 두 기기가 동시에 같은
+        // 코드를 복구하면 먼저 삭제 트랜잭션을 커밋한 한 기기만 성공합니다.
+        await store.deleteBackup({
+            backupId: remote.credentials.backupId,
+            writeToken: remote.credentials.writeToken,
+            expectedRevision: remote.revision
+        });
     }
 
     async function deleteCloudBackup(profile, options = {}) {
@@ -975,22 +1008,19 @@
             }
             try {
                 await records.replaceAllLearningRecords(incoming);
+                // 로컬 기록 교체까지 성공한 다음 원격 백업을 원자적으로 소비합니다.
+                // 삭제에 실패하면 아래에서 기존 로컬 기록으로 되돌리므로, 서버 파기 없이
+                // 같은 복구 코드가 성공 처리되는 경우가 생기지 않습니다.
+                await consumeFetchedCloudBackup(remote);
             } catch (restoreError) {
                 await records.replaceAllLearningRecords(current).catch((rollbackError) => {
                     console.error('클라우드 복원 자동 되돌리기 실패:', rollbackError);
                 });
                 throw restoreError;
             }
-            writeProfile({
-                recoveryCode: remote.credentials.recoveryCode,
-                revision: remote.revision,
-                lastSyncedAt: new Date().toISOString(),
-                recordCount: incoming.recordCount,
-                dirty: false,
-                conflict: false,
-                pendingMilestones: [],
-                needsRecoveryPrompt: false
-            });
+            // 소비된 코드를 이 기기에서도 다시 사용하지 않습니다. 다음 섹션 완료 또는
+            // '복구 코드 보기' 때 완전히 새로운 코드와 Firestore 문서가 만들어집니다.
+            clearProfile();
 
             // 모바일 카메라의 인앱 브라우저에서는 dialog를 닫은 직후 네이티브 alert와
             // 페이지 이동이 겹치면 닫힌 ::backdrop만 화면 합성에 남을 수 있습니다.

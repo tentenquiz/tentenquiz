@@ -125,6 +125,17 @@ async function configurePage(page, endpoint) {
         window.__TENTEN_FIRESTORE_TEST_ADAPTER__ = {
             putBackup: (payload) => call(payload.backupId, 'PUT', payload),
             getBackup: (payload) => call(payload.backupId, 'GET', null, payload.writeToken),
+            headBackup: async (payload) => {
+                try {
+                    const current = await call(payload.backupId, 'GET', null, payload.writeToken);
+                    return { exists: true, owned: true, revision: current.revision };
+                } catch (error) {
+                    if (error && error.code === 'not-found') {
+                        return { exists: false, owned: false, revision: '' };
+                    }
+                    throw error;
+                }
+            },
             deleteBackup: (payload) => call(payload.backupId, 'DELETE', payload)
         };
     }, endpoint);
@@ -267,6 +278,20 @@ async function completeSectionMilestone(page, stage, section) {
         });
         await secondPage.click('#cloud-backup-restore-form button[type="submit"]');
         await secondPage.waitForFunction(() => window.__TENTEN_RESTORE_NAVIGATION_REQUESTED__ === true);
+        if (backups.size !== 0) {
+            throw new Error(`a successfully restored recovery code still exists on the server: ${backups.size}`);
+        }
+        const consumedCodeRejected = await secondPage.evaluate(async (code) => {
+            try {
+                await window.TentenCloudBackup.fetchCloudBackup(code);
+                return false;
+            } catch (error) {
+                return error && error.code === 'not-found';
+            }
+        }, recoveryCode);
+        if (!consumedCodeRejected) throw new Error('the same recovery code was usable more than once');
+        const consumedProfileStillLocal = await secondPage.evaluate(() => Boolean(window.TentenCloudBackup.readProfile()));
+        if (consumedProfileStillLocal) throw new Error('the restored device kept the consumed recovery code locally');
         const releasedDialogState = await secondPage.evaluate(() => {
             const dialog = document.getElementById('cloud-backup-restore-dialog');
             const backdrop = getComputedStyle(dialog, '::backdrop');
@@ -317,18 +342,56 @@ async function completeSectionMilestone(page, stage, section) {
             return profile && profile.recordCount === 27 && profile.dirty === false;
         });
         if (putCount !== 3) throw new Error(`new-device recovery-code view did not refresh the backup: ${putCount}`);
+        const nextRecoveryCode = (await secondPage.locator('#cloud-backup-recovery-code').textContent()).trim();
+        if (!nextRecoveryCode || nextRecoveryCode === recoveryCode) {
+            throw new Error('the restored device did not issue a new recovery code after consuming the old one');
+        }
         await secondPage.click('#cloud-backup-recovery-close-btn');
+
+        const failureContext = await browser.newContext({ acceptDownloads: true });
+        const failurePage = await failureContext.newPage();
+        await configurePage(failurePage, endpoint);
+        failurePage.on('dialog', (dialog) => dialog.accept());
+        await failurePage.goto(`${origin}/?native=ko&learn=vi`, { waitUntil: 'domcontentloaded' });
+        await addProgress(failurePage, 'local-record-before-delete-failure');
+        await failurePage.evaluate(() => {
+            window.__TENTEN_FIRESTORE_TEST_ADAPTER__.deleteBackup = async () => {
+                const error = new Error('simulated delete failure');
+                error.code = 'unavailable';
+                throw error;
+            };
+        });
+        const failedRestoreResult = await failurePage.evaluate(
+            (code) => window.TentenCloudBackup.restoreFromCode(code),
+            nextRecoveryCode
+        );
+        if (failedRestoreResult !== false) throw new Error('restore succeeded even though one-time deletion failed');
+        const recordsAfterDeleteFailure = await failurePage.evaluate(
+            () => window.TentenLearningRecords.createBackupPayload()
+        );
+        if (recordsAfterDeleteFailure.recordCount !== 1) {
+            throw new Error(`delete failure did not restore the previous local records: ${recordsAfterDeleteFailure.recordCount}`);
+        }
+        if (backups.size !== 1) throw new Error('delete failure unexpectedly consumed the recovery backup');
+        await failureContext.close();
 
         await addProgress(firstPage, 'cloud-progress-conflict');
         await completeSectionMilestone(firstPage, 2, 'people_relations');
         await firstPage.click('#cloud-backup-manage-open-btn');
         await firstPage.click('#cloud-backup-show-code-btn');
+        await firstPage.waitForSelector('#cloud-backup-recovery-dialog[open]');
         await firstPage.waitForFunction(() => {
             const profile = window.TentenCloudBackup.readProfile();
-            return profile && profile.conflict === true;
+            return profile && profile.recordCount === 27 && profile.dirty === false
+                && profile.conflict === false && Boolean(profile.revision);
         });
-        const conflictText = (await firstPage.locator('#cloud-backup-status').textContent()).trim();
-        if (!conflictText.includes('다른 기기')) throw new Error(`conflict was not explained: ${conflictText}`);
+        const rotatedOriginalCode = (await firstPage.locator('#cloud-backup-recovery-code').textContent()).trim();
+        if (!rotatedOriginalCode || rotatedOriginalCode === recoveryCode || rotatedOriginalCode === nextRecoveryCode) {
+            throw new Error('the original device revived a consumed code instead of rotating to a new one');
+        }
+        if (putCount !== 4 || backups.size !== 2) {
+            throw new Error(`consumed-code rotation produced the wrong server state: puts=${putCount}, backups=${backups.size}`);
+        }
 
         if (await secondPage.locator('#cloud-backup-delete-btn').count()) {
             throw new Error('cloud-backup deletion must not be exposed in the learner UI');
@@ -336,9 +399,11 @@ async function completeSectionMilestone(page, stage, section) {
 
         console.log('OK: ordinary learning changes stay local and the first section milestone uploads only encrypted data');
         console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
-        console.log('OK: a recovery code restores all records and daily streak achievements on a new browser profile');
+        console.log('OK: a recovery code restores all records, is deleted immediately, and cannot be reused');
+        console.log('OK: the restored device issues a new code for its next cloud transfer');
+        console.log('OK: a server deletion failure rolls the receiving device back without consuming the code');
         console.log('OK: the mobile restore dialog and native alert leave no backdrop before navigation');
-        console.log('OK: stale devices cannot silently overwrite newer cloud records');
+        console.log('OK: the original device rotates to a new code instead of reviving a consumed one');
         console.log('OK: cloud-backup deletion is not exposed in the learner UI');
 
         await firstContext.close();

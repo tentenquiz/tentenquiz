@@ -166,9 +166,20 @@ vm.runInContext(source, context);
         throw new Error('Firestore backup documents were not deleted');
     }
 
+    let consumedRevisionRejected = false;
+    try {
+        await store.deleteBackup({ backupId, writeToken, expectedRevision: secondWrite.revision });
+    } catch (error) {
+        consumedRevisionRejected = error && error.code === 'not-found';
+    }
+    if (!consumedRevisionRejected) {
+        throw new Error('an already-consumed Firestore revision was accepted a second time');
+    }
+
     console.log('OK: encrypted backups are chunked and reassembled within Firestore limits');
     console.log('OK: Firestore transactions reject stale writers without changing stored data');
     console.log('OK: smaller updates remove obsolete chunks and valid deletion removes the cloud copy');
+    console.log('OK: an already-consumed Firestore revision cannot be claimed twice');
 })().catch((error) => {
     console.error(error);
     process.exitCode = 1;
