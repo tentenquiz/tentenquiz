@@ -19,7 +19,6 @@
     const FIRESTORE_SCHEMA = 'tentenquiz-firestore-backup';
     let milestoneSyncTimer = null;
     let milestoneEventPromise = Promise.resolve();
-    let recoveryPromptTimer = null;
     let backupToastTimer = null;
     let syncPromise = null;
     let controls = null;
@@ -729,22 +728,6 @@
         }
     }
 
-    function scheduleRecoveryPrompt() {
-        global.clearTimeout(recoveryPromptTimer);
-        const attempt = () => {
-            const profile = readProfile();
-            if (!profile || !profile.needsRecoveryPrompt || !profile.lastSyncedAt) return;
-            const quizCard = global.document.getElementById('quiz-card');
-            const quizIsVisible = quizCard && quizCard.style.display !== 'none';
-            if (quizIsVisible) {
-                recoveryPromptTimer = global.setTimeout(attempt, 1200);
-                return;
-            }
-            showRecoveryCode(profile.recoveryCode, { acknowledgePrompt: true });
-        };
-        recoveryPromptTimer = global.setTimeout(attempt, 700);
-    }
-
     async function getOrCreateLocalRecoveryProfile() {
         const existing = readProfile();
         if (existing) return existing;
@@ -854,7 +837,6 @@
                 const updated = await uploadProfile(profile);
                 updateControls();
                 showMilestoneBackupToast();
-                if (updated.needsRecoveryPrompt) scheduleRecoveryPrompt();
                 return updated;
             } catch (error) {
                 if (error instanceof CloudBackupConflictError) {
@@ -1096,7 +1078,9 @@
             try {
                 const profile = await saveLatestRecordsBeforeShowingRecoveryCode();
                 closeDialog(controls.manageDialog);
-                showRecoveryCode(profile.recoveryCode);
+                // 최초 섹션 완료 직후에는 결과 화면을 막는 모달을 자동으로 열지 않습니다.
+                // 사용자가 학습 기록 관리에서 직접 요청했을 때만 복구 코드를 보여 줍니다.
+                showRecoveryCode(profile.recoveryCode, { acknowledgePrompt: true });
             } catch (error) {
                 console.error('복구 코드 준비 실패:', error);
                 if (error instanceof CloudBackupConflictError) setStatus('cloudBackupConflict');
@@ -1138,7 +1122,6 @@
         if (profile && Array.isArray(profile.pendingMilestones) && profile.pendingMilestones.length > 0 && !profile.conflict) {
             global.setTimeout(() => syncNow().catch(() => {}), 1500);
         }
-        if (profile && profile.needsRecoveryPrompt && profile.lastSyncedAt) scheduleRecoveryPrompt();
     }
 
     global.TentenCloudBackup = {

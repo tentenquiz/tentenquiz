@@ -206,9 +206,32 @@ async function completeSectionMilestone(page, stage, section) {
         }
 
         await learnSectionQuestions(firstPage, 1, 'nature_weather', 24, 1);
-        await firstPage.waitForSelector('#cloud-backup-recovery-dialog[open]');
-        await firstPage.waitForFunction(() => document.querySelectorAll('#cloud-backup-qr svg').length === 1);
-        const recoveryCode = (await firstPage.locator('#cloud-backup-recovery-code').textContent()).trim();
+        await firstPage.waitForFunction(() => {
+            const profile = window.TentenCloudBackup.readProfile();
+            return profile && profile.lastSyncedAt && profile.dirty === false && profile.pendingMilestones.length === 0;
+        });
+        await firstPage.evaluate(() => {
+            window.selectedQuizCategory = '1';
+            window.selectedQuizSection = 'nature_weather';
+            window.selectionStep = 'section';
+            score = TOTAL_QUESTIONS;
+            document.getElementById('section-select-screen').style.display = 'none';
+            document.getElementById('quiz-card').style.display = 'none';
+            document.getElementById('result-card').style.display = 'block';
+            showPerfectScoreCelebration(TOTAL_QUESTIONS);
+        });
+        await firstPage.waitForTimeout(900);
+        if (await firstPage.locator('dialog[open]').count() !== 0) {
+            throw new Error('the first section milestone opened a blocking dialog over the result actions');
+        }
+        await firstPage.click('#result-back-same-btn');
+        await firstPage.waitForSelector('.completed-section-btn .progress-complete-confetti');
+        await firstPage.waitForFunction(() => (
+            document.querySelector('.completed-section-btn .section-emoji')?.classList.contains('is-celebrating')
+        ));
+        await firstPage.click('#selection-back-btn');
+        await firstPage.waitForSelector('#learning-records-manager:not([hidden])');
+        const recoveryCode = await firstPage.evaluate(() => window.TentenCloudBackup.readProfile().recoveryCode);
         if (!recoveryCode || backups.size !== 1 || putCount !== 1) {
             throw new Error('initial encrypted cloud backup was not created');
         }
@@ -219,7 +242,6 @@ async function completeSectionMilestone(page, stage, section) {
         if (process.env.TENTEN_CLOUD_DIALOG_CAPTURE) {
             await firstPage.screenshot({ path: process.env.TENTEN_CLOUD_DIALOG_CAPTURE, fullPage: true });
         }
-        await firstPage.click('#cloud-backup-recovery-close-btn');
 
         await learnSectionQuestions(firstPage, 1, 'nature_weather', 0, 25);
         await firstPage.waitForTimeout(1500);
@@ -242,6 +264,10 @@ async function completeSectionMilestone(page, stage, section) {
             const profile = window.TentenCloudBackup.readProfile();
             return profile && profile.recordCount === 26 && profile.dirty === false && profile.pendingMilestones.length === 0;
         });
+        const acknowledgedProfile = await firstPage.evaluate(() => window.TentenCloudBackup.readProfile());
+        if (acknowledgedProfile.needsRecoveryPrompt !== false) {
+            throw new Error('explicitly viewing the recovery code did not acknowledge the pending notice');
+        }
         if (putCount !== 2) throw new Error(`viewing the recovery code did not force a fresh backup: ${putCount}`);
         const refreshedRecoveryCode = (await firstPage.locator('#cloud-backup-recovery-code').textContent()).trim();
         if (refreshedRecoveryCode !== recoveryCode) throw new Error('forcing a fresh backup unexpectedly changed the recovery code');
@@ -397,7 +423,7 @@ async function completeSectionMilestone(page, stage, section) {
             throw new Error('cloud-backup deletion must not be exposed in the learner UI');
         }
 
-        console.log('OK: ordinary learning changes stay local and the first section milestone uploads only encrypted data');
+        console.log('OK: the first section milestone stays non-blocking, returns to the completed section celebration, and uploads only encrypted data');
         console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
         console.log('OK: a recovery code restores all records, is deleted immediately, and cannot be reused');
         console.log('OK: the restored device issues a new code for its next cloud transfer');
