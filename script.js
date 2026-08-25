@@ -14,6 +14,8 @@ let hanziRevealTimer = null;
 let celebrationHideTimer = null;
 let celebrationLoopTimer = null;
 let completionCardCelebrationTimers = [];
+let completionCardCelebrationBursts = [];
+let celebrationsNeedRestart = false;
 
 function resetCompletionCardCelebrations() {
     completionCardCelebrationTimers.forEach((timer) => {
@@ -21,21 +23,39 @@ function resetCompletionCardCelebrations() {
         clearInterval(timer);
     });
     completionCardCelebrationTimers = [];
+
+    completionCardCelebrationBursts.forEach((burst) => {
+        if (burst && typeof burst.reset === 'function') burst.reset();
+    });
+    completionCardCelebrationBursts = [];
+
+    document.querySelectorAll('.section-emoji.is-celebrating').forEach((emoji) => {
+        emoji.classList.remove('is-celebrating');
+    });
 }
 
 function startCompletionCardCelebration(button, order = 0) {
     if (!button || typeof confetti !== 'function') return;
+    if (document.visibilityState !== 'visible') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.className = 'progress-complete-confetti';
-    canvas.setAttribute('aria-hidden', 'true');
-    button.prepend(canvas);
+    let canvas = button.querySelector('.progress-complete-confetti');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.className = 'progress-complete-confetti';
+        canvas.setAttribute('aria-hidden', 'true');
+        button.prepend(canvas);
+    }
 
     // 완료된 섹션과 스테이지 카드마다 독립된 로컬 캔버스에 그립니다.
     const burst = confetti.create(canvas, { resize: true, useWorker: false });
+    completionCardCelebrationBursts.push(burst);
     const celebrate = () => {
-        if (!button.isConnected || button.getClientRects().length === 0) return;
+        if (document.visibilityState !== 'visible') {
+            resetCompletionCardCelebrations();
+            return false;
+        }
+        if (!button.isConnected || button.getClientRects().length === 0) return false;
 
         const emoji = button.querySelector('.section-emoji');
         if (emoji) {
@@ -55,10 +75,11 @@ function startCompletionCardCelebration(button, order = 0) {
             origin: { x: 0.5, y: 0.52 },
             disableForReducedMotion: true
         });
+        return true;
     };
 
     const firstTimer = setTimeout(() => {
-        celebrate();
+        if (!celebrate()) return;
         const loopTimer = setInterval(celebrate, 3000);
         completionCardCelebrationTimers.push(loopTimer);
     }, 350 + order * 500);
@@ -101,6 +122,7 @@ function renderPerfectScoreMessage(box, message) {
 
 function launchPerfectScoreConfetti(particleCount) {
     if (typeof confetti !== 'function') return;
+    if (document.visibilityState !== 'visible') return;
 
     confetti({
         particleCount,
@@ -111,6 +133,11 @@ function launchPerfectScoreConfetti(particleCount) {
 }
 
 function showPerfectScoreCelebration(correctCount = score) {
+    if (document.visibilityState !== 'visible') {
+        resetPerfectScoreCelebration();
+        return;
+    }
+
     if (correctCount !== TOTAL_QUESTIONS) {
         resetPerfectScoreCelebration();
         return;
@@ -131,7 +158,7 @@ function showPerfectScoreCelebration(correctCount = score) {
     celebrationLoopTimer = setInterval(() => {
         const resultCard = document.getElementById('result-card');
         const celebrationBox = document.getElementById('perfect-score-celebration');
-        if (!resultCard || !celebrationBox || resultCard.style.display === 'none' || score !== TOTAL_QUESTIONS) {
+        if (document.visibilityState !== 'visible' || !resultCard || !celebrationBox || resultCard.style.display === 'none' || score !== TOTAL_QUESTIONS) {
             resetPerfectScoreCelebration();
             return;
         }
@@ -288,6 +315,7 @@ const DAILY_QUIZ_ACHIEVEMENT_DATE_LIMIT = 800;
 let activeDailyQuizSession = null;
 let dailyQuizBannerCelebrationTimer = null;
 let dailyQuizBannerCelebrationStarter = null;
+let dailyQuizBannerCelebrationBurst = null;
 
 function getVirtualSectionMeta(key) {
     if (key === VIRTUAL_SECTION_WRONG) return { key, label: uiT('wrongClear'), emoji: '🔥' };
@@ -562,11 +590,16 @@ function stopDailyQuizBannerCelebration(button = document.getElementById('daily-
     if (dailyQuizBannerCelebrationTimer) clearInterval(dailyQuizBannerCelebrationTimer);
     dailyQuizBannerCelebrationStarter = null;
     dailyQuizBannerCelebrationTimer = null;
+    if (dailyQuizBannerCelebrationBurst && typeof dailyQuizBannerCelebrationBurst.reset === 'function') {
+        dailyQuizBannerCelebrationBurst.reset();
+    }
+    dailyQuizBannerCelebrationBurst = null;
     if (button) button.dataset.celebrationMode = '';
 }
 
 function startDailyQuizBannerCelebration(button, cleared) {
     if (!button || button.hidden || typeof confetti !== 'function') return;
+    if (document.visibilityState !== 'visible') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const mode = cleared ? 'cleared' : 'challenge';
     if (button.dataset.celebrationMode === mode && dailyQuizBannerCelebrationTimer) return;
@@ -580,15 +613,17 @@ function startDailyQuizBannerCelebration(button, cleared) {
         button.prepend(canvas);
     }
     const burst = confetti.create(canvas, { resize: true, useWorker: false });
+    dailyQuizBannerCelebrationBurst = burst;
     const celebrate = () => {
         if (
-            !button.isConnected
+            document.visibilityState !== 'visible'
+            || !button.isConnected
             || button.hidden
             || button.getClientRects().length === 0
             || (window.selectionStep || 'stage') !== 'stage'
         ) {
             stopDailyQuizBannerCelebration(button);
-            return;
+            return false;
         }
         const isRtl = document.documentElement.dir === 'rtl';
         burst({
@@ -605,10 +640,12 @@ function startDailyQuizBannerCelebration(button, cleared) {
             origin: { x: isRtl ? 0.9 : 0.1, y: 0.55 },
             disableForReducedMotion: true
         });
+        return true;
     };
     button.dataset.celebrationMode = mode;
     dailyQuizBannerCelebrationStarter = setTimeout(() => {
-        celebrate();
+        dailyQuizBannerCelebrationStarter = null;
+        if (!celebrate()) return;
         dailyQuizBannerCelebrationTimer = setInterval(celebrate, cleared ? 2300 : 3800);
     }, 350);
 }
@@ -3466,6 +3503,77 @@ function toggleAcc(button) {
     }
 }
 
+function stopAllCelebrations() {
+    resetPerfectScoreCelebration();
+    resetCompletionCardCelebrations();
+    stopDailyQuizBannerCelebration();
+}
+
+function restartVisibleCelebrations() {
+    if (document.visibilityState !== 'visible') return;
+
+    stopAllCelebrations();
+
+    const resultCard = document.getElementById('result-card');
+    const isResultVisible = Boolean(
+        resultCard
+        && resultCard.style.display !== 'none'
+        && resultCard.getClientRects().length > 0
+    );
+    if (isResultVisible) {
+        if (TOTAL_QUESTIONS > 0 && score === TOTAL_QUESTIONS) {
+            showPerfectScoreCelebration(score);
+        }
+        return;
+    }
+
+    const sectionScreen = document.getElementById('section-select-screen');
+    const isSectionScreenVisible = Boolean(
+        sectionScreen
+        && sectionScreen.style.display !== 'none'
+        && sectionScreen.getClientRects().length > 0
+    );
+    if (!isSectionScreenVisible) return;
+
+    const step = window.selectionStep || 'stage';
+    if (step === 'section') {
+        document.querySelectorAll('.completed-section-btn').forEach((button, order) => {
+            startCompletionCardCelebration(button, order);
+        });
+        return;
+    }
+
+    if (step === 'stage') {
+        document.querySelectorAll('.completed-stage-btn').forEach((button, order) => {
+            startCompletionCardCelebration(button, order);
+        });
+        updateDailyQuizBanner();
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+        celebrationsNeedRestart = true;
+        stopAllCelebrations();
+        return;
+    }
+
+    if (!celebrationsNeedRestart) return;
+    celebrationsNeedRestart = false;
+    restartVisibleCelebrations();
+});
+
+window.addEventListener('pagehide', () => {
+    celebrationsNeedRestart = true;
+    stopAllCelebrations();
+});
+
+window.addEventListener('pageshow', () => {
+    if (document.visibilityState !== 'visible' || !celebrationsNeedRestart) return;
+    celebrationsNeedRestart = false;
+    restartVisibleCelebrations();
+});
+
 window.addEventListener('resize', () => {
     scheduleOptionButtonHeightSync();
 });
@@ -3480,6 +3588,7 @@ updateSoundToggleButton();
 
 function burstWrongClearConfetti() {
     if (typeof confetti !== 'function') return;
+    if (document.visibilityState !== 'visible') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const optionsEl = document.querySelector('.options-container');
