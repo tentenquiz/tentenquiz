@@ -1483,6 +1483,8 @@ const QUIZ_QUESTION_LIMIT = 10;
 let TOTAL_QUESTIONS = QUIZ_QUESTION_LIMIT;
 const TIME_PER_QUESTION = 10;
 const AUTO_REPEAT_GAP_MS = 400;
+const AUTO_REPEAT_VIETNAMESE_GAP_MS = 600;
+const AUTO_REPEAT_MAX_PLAY_COUNT = 3;
 const AUTO_REPEAT_STOP_THRESHOLD = 3;
 const ANSWER_REVEAL_POST_AUDIO_MS = 500;
 const ANSWER_REVEAL_ANIM_MS = 300;
@@ -1851,6 +1853,7 @@ let currentAudio = null;
 
 let isAutoRepeating = false;
 let autoRepeatTimeoutId = null;
+let autoRepeatPlayCount = 0;
 let advanceQuestionTimeoutId = null;
 let answerRevealAdvanceToken = 0;
 let cancelPendingNativeAnswerAudio = null;
@@ -1969,9 +1972,16 @@ function playPronunciationAudio(term, quizItem = null, options = {}) {
 
         audio.onended = () => {
             if (repeatMode && isAutoRepeating && token === audioPlayToken) {
+                if (autoRepeatPlayCount >= AUTO_REPEAT_MAX_PLAY_COUNT) {
+                    isAutoRepeating = false;
+                    autoRepeatTimeoutId = null;
+                    return;
+                }
+                const repeatGapMs = getAutoRepeatGapMs(quizItem);
                 autoRepeatTimeoutId = setTimeout(() => {
+                    autoRepeatTimeoutId = null;
                     playRepeatOnce(term, token, quizItem);
-                }, AUTO_REPEAT_GAP_MS);
+                }, repeatGapMs);
             }
         };
 
@@ -2568,7 +2578,7 @@ function togglePauseMode() {
                 resumeQuestionTimer();
             }
             if (currentHanzi) {
-                startAutoRepeatSound(currentHanzi);
+                startAutoRepeatSound(currentHanzi, false);
             }
         }
         return;
@@ -2626,7 +2636,17 @@ function updateSectionBadge() {
     ensureSectionBadge();
 }
 
-function startAutoRepeatSound(term) {
+function getAutoRepeatGapMs(quizItem = null) {
+    const learningLanguage = String(
+        (quizItem && quizItem.learningLanguage)
+        || (window.tentenGlobal && window.tentenGlobal.learningLanguage)
+        || ''
+    ).trim();
+    return learningLanguage === 'vi' ? AUTO_REPEAT_VIETNAMESE_GAP_MS : AUTO_REPEAT_GAP_MS;
+}
+
+function startAutoRepeatSound(term, resetPlayCount = true) {
+    if (resetPlayCount) autoRepeatPlayCount = 0;
     if (!isSoundEnabled) return;
 
     stopAutoRepeatSound();
@@ -2639,12 +2659,22 @@ function startAutoRepeatSound(term) {
 function playRepeatOnce(term, token, quizItem = null) {
     if (!isAutoRepeating || token !== audioPlayToken || !term) return;
 
+    if (autoRepeatPlayCount >= AUTO_REPEAT_MAX_PLAY_COUNT) {
+        isAutoRepeating = false;
+        return;
+    }
+
     if (timeLeft <= AUTO_REPEAT_STOP_THRESHOLD) {
         isAutoRepeating = false;
         return;
     }
 
-    playPronunciationAudio(term, quizItem, { repeatMode: true, token });
+    const didStart = playPronunciationAudio(term, quizItem, { repeatMode: true, token });
+    if (didStart) {
+        autoRepeatPlayCount++;
+    } else {
+        isAutoRepeating = false;
+    }
 }
 
 function stopAutoRepeatSound() {
@@ -2700,7 +2730,7 @@ function toggleSound() {
     const quizCard = document.getElementById('quiz-card');
     const quizIsVisible = quizCard && quizCard.style.display !== 'none';
     if (quizIsVisible && isClickable && !isPaused && currentHanzi) {
-        startAutoRepeatSound(currentHanzi);
+        startAutoRepeatSound(currentHanzi, false);
     }
 }
 
