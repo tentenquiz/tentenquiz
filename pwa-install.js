@@ -97,7 +97,7 @@
         return {
             title: slot === 'result'
                 ? translate('pwaBannerResultTitle')
-                : translate(desktop ? 'pwaBannerTitleDesktop' : 'pwaBannerTitleMobile'),
+                : translate(desktop ? 'pwaBannerTitleDesktop' : kind === 'ios' ? 'pwaBannerTitleIos' : 'pwaBannerTitleAndroid'),
             benefit: slot === 'result'
                 ? translate('pwaBannerResultBenefit')
                 : translate(desktop ? 'pwaBannerBenefitDesktop' : 'pwaBannerBenefitMobile'),

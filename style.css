@@ -4331,10 +4331,12 @@ html[dir="rtl"] .daily-quiz-banner {
 
     .pwa-banner-title {
         font-size: 17px;
+        word-break: normal;
     }
 
     .pwa-banner-benefit {
         font-size: 13.5px;
+        word-break: normal;
     }
 
     .pwa-banner-cta {
