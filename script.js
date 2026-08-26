@@ -239,19 +239,22 @@ function bindStaticUiEvents() {
     };
 
     bindClick('.js-action-pause-toggle', () => togglePauseMode());
-    bindClick('.js-action-back-stage', () => backToStageSelection());
+    bindClick('.js-action-back-stage', () => navigateBackWithQuizHistory(() => backToStageSelection()));
     bindClick('.js-action-repeat-stop', () => stopRepeatMode());
     bindClick('.js-action-sound-toggle', () => toggleSound());
-    bindClick('.js-action-quiz-back-section', () => window.selectedQuizSection === VIRTUAL_SECTION_WORDBOOK ? finishWordbookLearning() : goToSameSectionFromQuiz());
-    bindClick('.js-action-share-result', () => shareToKakao());
-    bindClick('.js-action-daily-quiz', () => startDailyQuiz());
-    bindClick('.js-action-restart-stage', () => {
-        if (window.selectedQuizSection === VIRTUAL_SECTION_DAILY) resetDailyQuizAttempt();
-        restartQuiz();
+    bindClick('.js-action-quiz-back-section', () => {
+        if (window.selectedQuizSection === VIRTUAL_SECTION_WORDBOOK) {
+            finishWordbookLearning();
+            return;
+        }
+        navigateBackWithQuizHistory(() => goToSameSectionFromQuiz());
     });
+    bindClick('.js-action-share-result', () => shareToKakao());
+    bindClick('.js-action-daily-quiz', () => openDailyQuizWithHistory());
+    bindClick('.js-action-restart-stage', () => restartQuizFromResultWithHistory());
     bindClick('.js-action-share-notes', () => shareNotesToKakao());
-    bindClick('.js-action-result-back-same', () => goToSameSectionFromResult());
-    bindClick('.js-action-result-back-all', () => goToAllSectionsFromResult());
+    bindClick('.js-action-result-back-same', () => navigateBackWithQuizHistory(() => goToSameSectionFromResult()));
+    bindClick('.js-action-result-back-all', () => navigateBackWithQuizHistory(() => goToAllSectionsFromResult(), true));
 
     document.querySelectorAll('.js-action-option').forEach((button, idx) => {
         const optionIndex = Number(button.getAttribute('data-option-index'));
@@ -316,6 +319,432 @@ let activeDailyQuizSession = null;
 let dailyQuizBannerCelebrationTimer = null;
 let dailyQuizBannerCelebrationStarter = null;
 let dailyQuizBannerCelebrationBurst = null;
+
+const TENTEN_NAVIGATION_STATE_VERSION = 1;
+const TENTEN_NAVIGATION_SUPERSEDED_STORAGE_KEY = 'tenten.navigationSuperseded.v1';
+const quizNavigationSessionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let quizNavigationInitialized = false;
+let quizNavigationRestoreInProgress = false;
+let quizNavigationOperationToken = 0;
+let quizFlowToken = 0;
+let navigationRedirectPending = false;
+let currentResultNavigationEntryId = '';
+
+function createQuizNavigationEntryId() {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getQuizNavigationLanguageState() {
+    const runtime = window.tentenGlobal || {};
+    return {
+        interfaceLanguage: String(runtime.interfaceLanguage || ''),
+        learningLanguage: String(runtime.learningLanguage || ''),
+        chineseReading: String(runtime.chineseReading || '')
+    };
+}
+
+function isTentenNavigationState(state) {
+    return Boolean(
+        state
+        && typeof state === 'object'
+        && state.tentenNavigation === TENTEN_NAVIGATION_STATE_VERSION
+        && typeof state.sessionId === 'string'
+        && typeof state.screen === 'string'
+    );
+}
+
+function isCurrentQuizNavigationState(state = window.history.state) {
+    if (!isTentenNavigationState(state) || state.sessionId !== quizNavigationSessionId) return false;
+    const languageState = getQuizNavigationLanguageState();
+    return state.interfaceLanguage === languageState.interfaceLanguage
+        && state.learningLanguage === languageState.learningLanguage
+        && state.chineseReading === languageState.chineseReading;
+}
+
+function createQuizNavigationState(screen, options = {}) {
+    const languageState = getQuizNavigationLanguageState();
+    return {
+        tentenNavigation: TENTEN_NAVIGATION_STATE_VERSION,
+        sessionId: quizNavigationSessionId,
+        entryId: options.entryId || createQuizNavigationEntryId(),
+        screen,
+        depth: Number(options.depth) || 0,
+        stage: String(options.stage || ''),
+        section: String(options.section || ''),
+        ...languageState
+    };
+}
+
+function hasSameQuizNavigationTarget(left, right) {
+    return isCurrentQuizNavigationState(left)
+        && isCurrentQuizNavigationState(right)
+        && left.screen === right.screen
+        && left.depth === right.depth
+        && left.stage === right.stage
+        && left.section === right.section;
+}
+
+function replaceQuizNavigationState(state) {
+    window.history.replaceState(state, '', window.location.href);
+    return state;
+}
+
+function pushQuizNavigationState(state) {
+    if (hasSameQuizNavigationTarget(window.history.state, state)) return window.history.state;
+    window.history.pushState(state, '', window.location.href);
+    return state;
+}
+
+function readSupersededQuizNavigationSessions() {
+    try {
+        const parsed = JSON.parse(window.sessionStorage.getItem(TENTEN_NAVIGATION_SUPERSEDED_STORAGE_KEY) || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function writeSupersededQuizNavigationSessions(sessions) {
+    try {
+        const entries = Object.entries(sessions)
+            .sort((left, right) => Number(right[1]?.createdAt || 0) - Number(left[1]?.createdAt || 0))
+            .slice(0, 20);
+        window.sessionStorage.setItem(TENTEN_NAVIGATION_SUPERSEDED_STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
+    } catch (error) {
+        // sessionStorage가 제한된 환경에서는 현재 문서의 History 기능만 유지합니다.
+    }
+}
+
+function markCurrentQuizNavigationSessionSuperseded(targetUrl) {
+    let normalizedTarget = '';
+    try {
+        const resolved = new URL(targetUrl, window.location.href);
+        if (resolved.origin !== window.location.origin) return;
+        normalizedTarget = resolved.href;
+    } catch (error) {
+        return;
+    }
+
+    const sessions = readSupersededQuizNavigationSessions();
+    sessions[quizNavigationSessionId] = {
+        targetUrl: normalizedTarget,
+        createdAt: Date.now()
+    };
+    writeSupersededQuizNavigationSessions(sessions);
+}
+
+function getSupersededQuizNavigationTarget(state = window.history.state) {
+    if (!isTentenNavigationState(state)) return '';
+    const session = readSupersededQuizNavigationSessions()[state.sessionId];
+    if (!session || !session.targetUrl) return '';
+
+    try {
+        const target = new URL(session.targetUrl, window.location.href);
+        return target.origin === window.location.origin ? target.href : '';
+    } catch (error) {
+        return '';
+    }
+}
+
+function redirectSupersededQuizNavigationSession(state = window.history.state) {
+    const targetUrl = getSupersededQuizNavigationTarget(state);
+    if (!targetUrl) return false;
+
+    navigationRedirectPending = true;
+    celebrationsNeedRestart = false;
+    if (typeof stopAllCelebrations === 'function') stopAllCelebrations();
+    window.history.replaceState(null, '', window.location.href);
+    window.location.replace(targetUrl);
+    return true;
+}
+
+function isQuizNavigationScreenCurrent(screen, state = window.history.state) {
+    return !quizNavigationInitialized || (isCurrentQuizNavigationState(state) && state.screen === screen);
+}
+
+function canContinueQuizNavigation(operationToken, section = '') {
+    if (operationToken !== quizNavigationOperationToken) return false;
+    if (!quizNavigationInitialized) return true;
+    const state = window.history.state;
+    return isCurrentQuizNavigationState(state)
+        && state.screen === 'quiz'
+        && (!section || state.section === section);
+}
+
+function isElementDisplayed(element) {
+    return Boolean(element && window.getComputedStyle(element).display !== 'none');
+}
+
+function invalidateQuizNavigationOperations() {
+    quizNavigationOperationToken++;
+}
+
+function getParentQuizNavigationState(state = window.history.state) {
+    if (!isCurrentQuizNavigationState(state)) return null;
+    if (state.section === VIRTUAL_SECTION_DAILY || state.depth <= 1) {
+        return createQuizNavigationState('stage', { depth: 0 });
+    }
+    return createQuizNavigationState('section', {
+        depth: 1,
+        stage: state.stage
+    });
+}
+
+function initializeQuizNavigationHistory() {
+    if (redirectSupersededQuizNavigationSession()) return false;
+
+    quizNavigationInitialized = true;
+    currentResultNavigationEntryId = '';
+    replaceQuizNavigationState(createQuizNavigationState('stage', { depth: 0 }));
+    return true;
+}
+
+function openStageSectionsWithHistory(stageKey) {
+    resetCompletionCardCelebrations();
+    currentResultNavigationEntryId = '';
+    invalidateQuizNavigationOperations();
+
+    if (quizNavigationInitialized && !quizNavigationRestoreInProgress) {
+        pushQuizNavigationState(createQuizNavigationState('section', {
+            depth: 1,
+            stage: String(stageKey)
+        }));
+    }
+    selectStage(String(stageKey));
+}
+
+function finishPendingQuizNavigation(entryId, operationToken) {
+    const state = window.history.state;
+    const quizCard = document.getElementById('quiz-card');
+    if (operationToken !== quizNavigationOperationToken) {
+        if (isCurrentQuizNavigationState(state)
+            && state.screen === 'quiz'
+            && !isElementDisplayed(quizCard)
+            && !window.isSelectingQuizSection) {
+            restoreCurrentQuizNavigationScreen();
+        }
+        return;
+    }
+    if (!isCurrentQuizNavigationState(state) || state.entryId !== entryId || state.screen !== 'quiz') return;
+
+    if (!isElementDisplayed(quizCard)) {
+        invalidateQuizNavigationOperations();
+        window.history.back();
+    }
+}
+
+function openSectionQuizWithHistory(sectionKey) {
+    resetCompletionCardCelebrations();
+    currentResultNavigationEntryId = '';
+    const state = createQuizNavigationState('quiz', {
+        depth: 2,
+        stage: window.selectedQuizCategory,
+        section: sectionKey
+    });
+
+    if (quizNavigationInitialized && !quizNavigationRestoreInProgress) {
+        pushQuizNavigationState(state);
+    }
+
+    const operationToken = ++quizNavigationOperationToken;
+    Promise.resolve(selectSection(sectionKey))
+        .then(() => finishPendingQuizNavigation(state.entryId, operationToken))
+        .catch(() => finishPendingQuizNavigation(state.entryId, operationToken));
+}
+
+function openDailyQuizWithHistory() {
+    currentResultNavigationEntryId = '';
+    const state = createQuizNavigationState('quiz', {
+        depth: 1,
+        section: VIRTUAL_SECTION_DAILY
+    });
+
+    if (quizNavigationInitialized && !quizNavigationRestoreInProgress) {
+        pushQuizNavigationState(state);
+    }
+
+    const operationToken = ++quizNavigationOperationToken;
+    Promise.resolve(startDailyQuiz(operationToken))
+        .then(() => finishPendingQuizNavigation(state.entryId, operationToken))
+        .catch(() => finishPendingQuizNavigation(state.entryId, operationToken));
+}
+
+function replaceCurrentQuizNavigationWithResult() {
+    const state = window.history.state;
+    if (!quizNavigationInitialized || !isCurrentQuizNavigationState(state) || state.screen !== 'quiz') return;
+
+    const resultState = createQuizNavigationState('result', {
+        depth: state.depth,
+        stage: state.stage,
+        section: state.section
+    });
+    currentResultNavigationEntryId = resultState.entryId;
+    replaceQuizNavigationState(resultState);
+}
+
+function restartQuizFromResultWithHistory() {
+    const state = window.history.state;
+    if (window.selectedQuizSection === VIRTUAL_SECTION_DAILY) resetDailyQuizAttempt();
+
+    if (quizNavigationInitialized && isCurrentQuizNavigationState(state) && state.screen === 'result') {
+        replaceQuizNavigationState(createQuizNavigationState('quiz', {
+            depth: state.depth,
+            stage: state.stage,
+            section: state.section
+        }));
+    }
+
+    currentResultNavigationEntryId = '';
+    ++quizNavigationOperationToken;
+    restartQuiz();
+}
+
+function navigateBackWithQuizHistory(fallback, allTheWay = false) {
+    const state = window.history.state;
+    if (quizNavigationInitialized && isCurrentQuizNavigationState(state) && state.depth > 0) {
+        invalidateQuizNavigationOperations();
+        if (allTheWay) {
+            window.history.go(-state.depth);
+        } else {
+            window.history.back();
+        }
+        return;
+    }
+    fallback();
+}
+
+function returnFromEmptyQuizWithHistory() {
+    const state = window.history.state;
+    if (!quizNavigationInitialized || !isCurrentQuizNavigationState(state) || state.screen !== 'quiz' || state.depth <= 0) {
+        return false;
+    }
+    invalidateQuizNavigationOperations();
+    window.history.back();
+    return true;
+}
+
+function restoreCurrentQuizNavigationScreen() {
+    const state = window.history.state;
+    if (!isCurrentQuizNavigationState(state)) return;
+    const restoreToken = quizNavigationOperationToken;
+    Promise.resolve(restoreQuizNavigationState(state, restoreToken)).catch((error) => {
+        console.error('현재 화면 복원 실패:', error);
+    });
+}
+
+function showStageScreenFromNavigation() {
+    const quizCard = document.getElementById('quiz-card');
+    const resultCard = document.getElementById('result-card');
+    const sectionScreen = document.getElementById('section-select-screen');
+    if (quizCard) quizCard.style.display = 'none';
+    if (resultCard) resultCard.style.display = 'none';
+    if (sectionScreen) sectionScreen.style.display = 'block';
+    window.selectedQuizCategory = '';
+    window.selectedQuizSection = getDefaultSectionKey();
+    window.selectionStep = 'stage';
+    backToStageSelection();
+}
+
+function showSectionScreenFromNavigation(state) {
+    const quizCard = document.getElementById('quiz-card');
+    const resultCard = document.getElementById('result-card');
+    const sectionScreen = document.getElementById('section-select-screen');
+    if (quizCard) quizCard.style.display = 'none';
+    if (resultCard) resultCard.style.display = 'none';
+    if (sectionScreen) sectionScreen.style.display = 'block';
+    window.selectedQuizCategory = String(state.stage || getDefaultStageKey());
+    window.selectedQuizSection = getDefaultSectionKey();
+    window.selectionStep = 'section';
+    selectStage(window.selectedQuizCategory);
+}
+
+async function restoreQuizNavigationState(state, restoreToken) {
+    if (!isCurrentQuizNavigationState(state) || restoreToken !== quizNavigationOperationToken) return;
+    quizNavigationRestoreInProgress = true;
+
+    try {
+        if (state.screen === 'stage') {
+            showStageScreenFromNavigation();
+            return;
+        }
+
+        if (state.screen === 'section') {
+            showSectionScreenFromNavigation(state);
+            return;
+        }
+
+        if (state.screen === 'quiz') {
+            currentResultNavigationEntryId = '';
+            window.selectedQuizCategory = String(state.stage || '');
+            window.selectedQuizSection = String(state.section || '');
+            const selectionWasBusy = Boolean(window.isSelectingQuizSection);
+            if (state.section === VIRTUAL_SECTION_DAILY) {
+                window.selectionStep = 'stage';
+                await startDailyQuiz(restoreToken);
+            } else {
+                window.selectionStep = 'section';
+                await selectSection(state.section);
+            }
+            if (restoreToken === quizNavigationOperationToken
+                && !selectionWasBusy
+                && !window.isSelectingQuizSection
+                && !isElementDisplayed(document.getElementById('quiz-card'))) {
+                const fallbackState = getParentQuizNavigationState(state);
+                if (fallbackState) {
+                    replaceQuizNavigationState(fallbackState);
+                    await restoreQuizNavigationState(fallbackState, restoreToken);
+                }
+            }
+            return;
+        }
+
+        if (state.screen === 'result') {
+            if (currentResultNavigationEntryId && currentResultNavigationEntryId === state.entryId) {
+                window.selectedQuizCategory = String(state.stage || '');
+                window.selectedQuizSection = String(state.section || '');
+                window.selectionStep = state.section === VIRTUAL_SECTION_DAILY ? 'stage' : 'section';
+                const sectionScreen = document.getElementById('section-select-screen');
+                const quizCard = document.getElementById('quiz-card');
+                const resultCard = document.getElementById('result-card');
+                if (sectionScreen) sectionScreen.style.display = 'none';
+                if (quizCard) quizCard.style.display = 'none';
+                if (resultCard) resultCard.style.display = 'block';
+                updateSectionTopicText();
+                updateResultActionButtons();
+                restartVisibleCelebrations();
+                return;
+            }
+
+            const fallbackState = getParentQuizNavigationState(state);
+            if (fallbackState) {
+                replaceQuizNavigationState(fallbackState);
+                await restoreQuizNavigationState(fallbackState, restoreToken);
+            }
+        }
+    } finally {
+        if (restoreToken === quizNavigationOperationToken) quizNavigationRestoreInProgress = false;
+    }
+}
+
+function handleQuizNavigationPopState(event) {
+    if (redirectSupersededQuizNavigationSession(event.state)) return;
+    if (!isCurrentQuizNavigationState(event.state)) return;
+
+    const restoreToken = ++quizNavigationOperationToken;
+    stopAllCelebrations();
+    if (isElementDisplayed(document.getElementById('quiz-card'))) stopActiveQuizFlow();
+    Promise.resolve(restoreQuizNavigationState(event.state, restoreToken)).catch((error) => {
+        console.error('화면 이동 복원 실패:', error);
+    });
+}
+
+function handleQuizNavigationPageShow() {
+    redirectSupersededQuizNavigationSession(window.history.state);
+}
 
 function getVirtualSectionMeta(key) {
     if (key === VIRTUAL_SECTION_WRONG) return { key, label: uiT('wrongClear'), emoji: '🔥' };
@@ -843,12 +1272,14 @@ function updateDailyQuizBanner() {
     startDailyQuizBannerCelebration(button, Boolean(session?.cleared));
 }
 
-async function startDailyQuiz() {
+async function startDailyQuiz(operationToken = quizNavigationOperationToken) {
     if (window.isSelectingQuizSection) return;
+    if (!canContinueQuizNavigation(operationToken, VIRTUAL_SECTION_DAILY)) return;
     window.isSelectingQuizSection = true;
     try {
         stopDailyQuizBannerCelebration();
         const session = await getOrCreateDailyQuizSession();
+        if (!canContinueQuizNavigation(operationToken, VIRTUAL_SECTION_DAILY)) return;
         if (session.attempt?.completed || session.attempt?.results?.length >= DAILY_QUIZ_QUESTION_COUNT) {
             resetDailyQuizAttempt();
         }
@@ -856,13 +1287,14 @@ async function startDailyQuiz() {
         if (firstQuestion && typeof unlockAudio === 'function') {
             await unlockAudio(firstQuestion.category || firstQuestion.section || '', Number(firstQuestion.stage) || 1);
         }
+        if (!canContinueQuizNavigation(operationToken, VIRTUAL_SECTION_DAILY)) return;
 
         window.selectedQuizCategory = '';
         window.selectedQuizSection = VIRTUAL_SECTION_DAILY;
         window.selectionStep = 'stage';
         document.getElementById('section-select-screen').style.display = 'none';
         document.getElementById('quiz-card').style.display = 'block';
-        await restartQuiz();
+        await restartQuiz(operationToken);
     } catch (error) {
         console.error('오늘의 퀴즈 시작 실패:', error);
         showStreakToast(uiT('dataLoadError'), false);
@@ -1081,10 +1513,13 @@ function updateSectionTopicText() {
         }
     }
 }
+let sectionButtonRenderToken = 0;
+
 // ★ renderSectionButtons()의 section 단계 부분을 async로 변경하여 개수 반영
 async function renderSectionButtons() {
     const sectionGrid = document.getElementById('section-grid');
     if (!sectionGrid) return;
+    const renderToken = ++sectionButtonRenderToken;
 
     resetCompletionCardCelebrations();
 
@@ -1109,6 +1544,7 @@ async function renderSectionButtons() {
         const learnedRecords = typeof getLearningProgressByStage === 'function'
             ? await getLearningProgressByStage(selectedStage)
             : [];
+        if (renderToken !== sectionButtonRenderToken) return;
         const learnedIds = new Set(learnedRecords.map((item) => item.id));
         let totalQuestionCount = 0;
         let totalLearnedCount = 0;
@@ -1140,8 +1576,7 @@ async function renderSectionButtons() {
             button.className = `section-btn${isComplete ? ' completed-progress-btn completed-section-btn' : ''}`;
             button.type = 'button';
             button.addEventListener('click', () => {
-                resetCompletionCardCelebrations();
-                selectSection(section.key);
+                openSectionQuizWithHistory(section.key);
             });
             button.innerHTML = `
                 <span class="section-emoji">${escapeHtml(section.emoji)}</span>
@@ -1162,13 +1597,13 @@ async function renderSectionButtons() {
             getWrongBankCountByStage(selectedStage),
             getWordbookCountByStage(selectedStage)
         ]);
+        if (renderToken !== sectionButtonRenderToken) return;
 
         const wrongBtn = document.createElement('button');
         wrongBtn.className = 'section-btn special-section-btn wrong-bank-section-btn';
         wrongBtn.type = 'button';
         wrongBtn.addEventListener('click', () => {
-            resetCompletionCardCelebrations();
-            selectSection(VIRTUAL_SECTION_WRONG);
+            openSectionQuizWithHistory(VIRTUAL_SECTION_WRONG);
         });
         wrongBtn.innerHTML = `
             ${escapeHtml(uiT('wrongClear'))}
@@ -1180,8 +1615,7 @@ async function renderSectionButtons() {
         wordbookBtn.className = 'section-btn special-section-btn wordbook-section-btn';
         wordbookBtn.type = 'button';
         wordbookBtn.addEventListener('click', () => {
-            resetCompletionCardCelebrations();
-            selectSection(VIRTUAL_SECTION_WORDBOOK);
+            openSectionQuizWithHistory(VIRTUAL_SECTION_WORDBOOK);
         });
         wordbookBtn.innerHTML = `
             ${escapeHtml(uiT('myWordbook'))}
@@ -1221,6 +1655,7 @@ async function renderSectionButtons() {
             remainingCount: Math.max(0, uniqueQuestionIds.size - learnedCount)
         };
     }));
+    if (renderToken !== sectionButtonRenderToken) return;
 
     let completedStageOrder = 0;
     stageProgress.forEach(({ stage, questionCount, remainingCount }) => {
@@ -1229,8 +1664,7 @@ async function renderSectionButtons() {
         button.className = `section-btn stage-select-btn${isComplete ? ' completed-progress-btn completed-stage-btn' : ''}`;
         button.type = 'button';
         button.addEventListener('click', () => {
-            resetCompletionCardCelebrations();
-            selectStage(String(stage));
+            openStageSectionsWithHistory(String(stage));
         });
         button.innerHTML = `
             <span class="section-emoji stage-select-emoji">${stageEmojis[stage - 1] || '📚'}</span>
@@ -1361,6 +1795,7 @@ function rebuildExamplePinyinMap() {
 
 async function initializeQuizApp() {
     try {
+        if (redirectSupersededQuizNavigationSession()) return;
         bindStaticUiEvents();
         initializeGlobalLanguageSelectors();
 
@@ -1371,6 +1806,7 @@ async function initializeQuizApp() {
         activeQuizData = buildQuizDataFromSectionArrays();
         rebuildPinyinCountMap();
         rebuildExamplePinyinMap();
+        if (!initializeQuizNavigationHistory()) return;
         initializeSectionSelection();
 
         if (!activeQuizData.length) {
@@ -1442,7 +1878,9 @@ function initializeGlobalLanguageSelectors() {
 
     const reloadWithCurrentPreferences = () => {
         if (typeof window.buildTentenPreferenceUrl === 'function') {
-            window.location.replace(window.buildTentenPreferenceUrl(window.location.href));
+            const targetUrl = window.buildTentenPreferenceUrl(window.location.href);
+            markCurrentQuizNavigationSessionSuperseded(targetUrl);
+            window.location.replace(targetUrl);
             return;
         }
         window.location.reload();
@@ -1480,6 +1918,7 @@ function initializeGlobalLanguageSelectors() {
 }
 
 function synchronizeLanguageStateAfterPageShow() {
+    if (navigationRedirectPending) return;
     if (!window.tentenGlobal || typeof window.resolveTentenLanguageState !== 'function') return;
 
     const runtimeState = window.tentenGlobal;
@@ -2409,18 +2848,20 @@ function cancelScheduledQuestionAdvance() {
 function scheduleAnswerRevealAdvance(answerAudioDone = Promise.resolve()) {
     cancelScheduledQuestionAdvance();
     const sequenceToken = answerRevealAdvanceToken;
+    const flowToken = quizFlowToken;
     const feedbackWaitStartedAt = Date.now();
 
     Promise.resolve(answerAudioDone)
         .catch(() => undefined)
         .then(() => {
-            if (sequenceToken !== answerRevealAdvanceToken) return;
+            if (sequenceToken !== answerRevealAdvanceToken || flowToken !== quizFlowToken) return;
 
             advanceQuestionTimeoutId = setTimeout(() => {
                 advanceQuestionTimeoutId = null;
-                if (sequenceToken !== answerRevealAdvanceToken) return;
+                if (sequenceToken !== answerRevealAdvanceToken || flowToken !== quizFlowToken) return;
 
                 playAnswerRevealExit(() => {
+                    if (sequenceToken !== answerRevealAdvanceToken || flowToken !== quizFlowToken) return;
                     excludedTimeMs += Math.max(0, Date.now() - feedbackWaitStartedAt);
                     goToNextQuestion();
                 });
@@ -2759,6 +3200,8 @@ function toggleSound() {
 function stopActiveQuizFlow() {
     const quizReturnWrap = document.querySelector('.quiz-section-return-wrap');
 
+    quizFlowToken++;
+
     cancelScheduledQuestionAdvance();
 
     clearInterval(timerInterval);
@@ -2767,6 +3210,11 @@ function stopActiveQuizFlow() {
     if (hanziRevealTimer) {
         clearTimeout(hanziRevealTimer);
         hanziRevealTimer = null;
+    }
+
+    if (optionHeightSyncRafId) {
+        cancelAnimationFrame(optionHeightSyncRafId);
+        optionHeightSyncRafId = 0;
     }
 
     stopAutoRepeatSound();
@@ -2833,6 +3281,7 @@ async function recordQuestionAsLearned(question) {
 async function handleTimeout() {
     if (isPaused) return;
     if (!isClickable) return;
+    const flowToken = quizFlowToken;
     isClickable = false;
 
     stopAutoRepeatSound();
@@ -2851,6 +3300,7 @@ async function handleTimeout() {
     showAnswerRevealPopup(currentCorrectText);
     const answerAudioDone = playNativeAnswerAudio(q);
     await recordQuestionAsLearned(q);
+    if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
     const stage = q.stage || window.selectedQuizCategory || 1;
     const hanzi = getResultHeadword(q);
     const wrongItem = {
@@ -2878,8 +3328,10 @@ async function handleTimeout() {
     // 시간초과도 일반 오답과 동일하게 해당 스테이지의 오답 클리어하기에 저장합니다.
     try {
         await addOrUpdateWrong(wrongItem);
+        if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
         if (window.selectedQuizSection === VIRTUAL_SECTION_WRONG) {
             await updateInQuizWrongBadge();
+            if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
         }
     } catch (error) {
         console.error('시간초과 오답 저장 실패:', error);
@@ -3024,6 +3476,7 @@ function scheduleOptionButtonHeightSync() {
 async function checkAnswer(selectedIdx) {
     if (isPaused) return;
     if (!isClickable) return;
+    const flowToken = quizFlowToken;
     isClickable = false;
 
     clearInterval(timerInterval);
@@ -3037,6 +3490,7 @@ async function checkAnswer(selectedIdx) {
 
     const q = shuffledQuestions[currentIdx];
     await recordQuestionAsLearned(q);
+    if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
     const stage = q.stage || window.selectedQuizCategory || 1;
     const hanzi = getResultHeadword(q);
 
@@ -3058,11 +3512,13 @@ async function checkAnswer(selectedIdx) {
         const result = [VIRTUAL_SECTION_WRONG, VIRTUAL_SECTION_DAILY].includes(window.selectedQuizSection)
             ? await handleCorrectForWrongBank(stage, hanzi, currentCorrectText, q.id || '')
             : null;
+        if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
         if (result && window.selectedQuizSection === VIRTUAL_SECTION_WRONG) {
             burstWrongClearConfetti();
             // 현재 섹션이 오답 클리어하기라면 배지 숫자도 즉시 갱신
             if (window.selectedQuizSection === VIRTUAL_SECTION_WRONG) {
                 await updateInQuizWrongBadge();
+                if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
             }
         }
 
@@ -3070,6 +3526,7 @@ async function checkAnswer(selectedIdx) {
 
         advanceQuestionTimeoutId = setTimeout(() => {
             advanceQuestionTimeoutId = null;
+            if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
             goToNextQuestion();
         }, 450);
 
@@ -3103,9 +3560,11 @@ async function checkAnswer(selectedIdx) {
             isGlobalData: Boolean(q.isGlobalData), learningLanguage: q.learningLanguage || '', interfaceLanguage: q.interfaceLanguage || '',
             stage, category: q.category || ''
         });
+        if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
 
         if (window.selectedQuizSection === VIRTUAL_SECTION_WRONG) {
             await updateInQuizWrongBadge();
+            if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
         }
 
         recordDailyQuizAttemptResult(q, 'wrong');
@@ -3116,6 +3575,7 @@ async function checkAnswer(selectedIdx) {
 
 
 function goToNextQuestion() {
+    if (!isQuizNavigationScreenCurrent('quiz')) return;
     cancelScheduledQuestionAdvance();
 
     currentIdx++;
@@ -3141,6 +3601,7 @@ function finishWordbookLearning() {
 }
 
 function endGame() {
+    if (!isQuizNavigationScreenCurrent('quiz')) return;
     isClickable = false;
     resetPauseMode();
     stopAutoRepeatSound();
@@ -3158,6 +3619,7 @@ function endGame() {
 
     document.getElementById('quiz-card').style.display = 'none';
     document.getElementById('result-card').style.display = 'block';
+    replaceCurrentQuizNavigationWithResult();
     const resultTitle = document.querySelector('#result-card h2');
     if (resultTitle) {
         resultTitle.textContent = quizSessionMode === VIRTUAL_SECTION_WORDBOOK
@@ -3277,7 +3739,14 @@ function endGame() {
 }
 
 
-async function restartQuiz() {
+async function restartQuiz(operationToken = quizNavigationOperationToken) {
+    if (!canContinueQuizNavigation(operationToken, window.selectedQuizSection)) {
+        restoreCurrentQuizNavigationScreen();
+        return false;
+    }
+
+    const flowToken = ++quizFlowToken;
+    currentResultNavigationEntryId = '';
     quizSessionMode = window.selectedQuizSection;
     quizSessionCategory = window.selectedQuizCategory;
     wordbookResultRenderToken++;
@@ -3304,8 +3773,20 @@ async function restartQuiz() {
     updateSectionTopicText();
 
     await updateSectionBadge();
+    if (flowToken !== quizFlowToken) return false;
+    if (!canContinueQuizNavigation(operationToken, quizSessionMode)) {
+        stopActiveQuizFlow();
+        restoreCurrentQuizNavigationScreen();
+        return false;
+    }
 
     await prepareQuizSet();
+    if (flowToken !== quizFlowToken) return false;
+    if (!canContinueQuizNavigation(operationToken, quizSessionMode)) {
+        stopActiveQuizFlow();
+        restoreCurrentQuizNavigationScreen();
+        return false;
+    }
 
     restoreDailyQuizAttempt();
 
@@ -3325,12 +3806,13 @@ async function restartQuiz() {
         if (quizCard) quizCard.style.display = 'none';
         if (resultCard) resultCard.style.display = 'none';
 
+        if (returnFromEmptyQuizWithHistory()) return false;
         if (typeof goToSameSectionFromResult === 'function') {
             goToSameSectionFromResult();
         } else if (typeof goToSameSectionFromQuiz === 'function') {
             goToSameSectionFromQuiz();
         }
-        return;
+        return false;
     }
 
     const resultCard = document.getElementById('result-card');
@@ -3352,6 +3834,7 @@ async function restartQuiz() {
 
     loadQuiz();
     startQuestionTimer();
+    return true;
 }
 
 function fallbackCopyShareText(text) {
@@ -3619,6 +4102,9 @@ window.addEventListener('pagehide', () => {
     celebrationsNeedRestart = true;
     stopAllCelebrations();
 });
+
+window.addEventListener('popstate', handleQuizNavigationPopState);
+window.addEventListener('pageshow', handleQuizNavigationPageShow);
 
 window.addEventListener('pageshow', () => {
     if (document.visibilityState !== 'visible' || !celebrationsNeedRestart) return;

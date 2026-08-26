@@ -1113,7 +1113,7 @@
         const hashMatch = global.location.hash.match(/^#tenten-recover=(.+)$/);
         if (hashMatch) {
             const code = decodeURIComponent(hashMatch[1]);
-            global.history.replaceState(null, '', `${global.location.pathname}${global.location.search}`);
+            global.history.replaceState(global.history.state, '', `${global.location.pathname}${global.location.search}`);
             controls.restoreInput.value = code;
             openDialog(controls.restoreDialog);
         }
