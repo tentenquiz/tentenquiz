@@ -39,27 +39,48 @@
         en: 'en', ko: 'ko', ja: 'ja', 'zh-CN': 'zh-cn', 'zh-TW': 'zh-tw',
         fr: 'fr', de: 'de', es: 'es', vi: 'vi', ar: 'ar', it: 'it', ru: 'ru'
     };
-    const query = new URLSearchParams(window.location.search);
-    const savedLearningLanguage = localStorage.getItem('tenten.learningLanguage');
-    const savedInterfaceLanguage = localStorage.getItem('tenten.interfaceLanguage');
-    const savedChineseReading = localStorage.getItem('tenten.chineseReading');
+    window.resolveTentenLanguageState = function resolveTentenLanguageState(currentUrl, fallbackState) {
+        const url = new URL(currentUrl || window.location.href, window.location.href);
+        const query = url.searchParams;
+        const savedLearningLanguage = localStorage.getItem('tenten.learningLanguage');
+        const savedInterfaceLanguage = localStorage.getItem('tenten.interfaceLanguage');
+        const savedChineseReading = localStorage.getItem('tenten.chineseReading');
 
-    const requestedLearningLanguage = query.get('learn') || savedLearningLanguage || 'ja';
-    const staticInterfaceLanguage = String(window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ || '').trim();
-    const requestedInterfaceLanguage = query.get('native') || staticInterfaceLanguage || savedInterfaceLanguage || 'ko';
-    const requestedChineseReading = query.get('zhReading') || savedChineseReading || 'pinyin';
+        const requestedLearningLanguage = query.get('learn')
+            || (fallbackState && fallbackState.learningLanguage)
+            || savedLearningLanguage
+            || 'ja';
+        const staticInterfaceLanguage = String(window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ || '').trim();
+        const requestedInterfaceLanguage = query.get('native')
+            || staticInterfaceLanguage
+            || (fallbackState && fallbackState.interfaceLanguage)
+            || savedInterfaceLanguage
+            || 'ko';
+        const requestedChineseReading = query.get('zhReading')
+            || (fallbackState && fallbackState.chineseReading)
+            || savedChineseReading
+            || 'pinyin';
 
-    const interfaceLanguage = byCode[requestedInterfaceLanguage] ? requestedInterfaceLanguage : 'ko';
-    const requestedLearning = byCode[requestedLearningLanguage] ? requestedLearningLanguage : 'ja';
-    const learningLanguage = requestedLearning !== interfaceLanguage
-        ? requestedLearning
-        : languages.find((language) => language.code !== interfaceLanguage).code;
+        const interfaceLanguage = byCode[requestedInterfaceLanguage] ? requestedInterfaceLanguage : 'ko';
+        const requestedLearning = byCode[requestedLearningLanguage] ? requestedLearningLanguage : 'ja';
+        const learningLanguage = requestedLearning !== interfaceLanguage
+            ? requestedLearning
+            : languages.find((language) => language.code !== interfaceLanguage).code;
+
+        return {
+            learningLanguage,
+            interfaceLanguage,
+            chineseReading: requestedChineseReading === 'zhuyin' ? 'zhuyin' : 'pinyin'
+        };
+    };
+
+    const initialLanguageState = window.resolveTentenLanguageState(window.location.href);
 
     window.TENTEN_LANGUAGES = languages;
     window.tentenGlobal = {
-        learningLanguage,
-        interfaceLanguage,
-        chineseReading: requestedChineseReading === 'zhuyin' ? 'zhuyin' : 'pinyin'
+        learningLanguage: initialLanguageState.learningLanguage,
+        interfaceLanguage: initialLanguageState.interfaceLanguage,
+        chineseReading: initialLanguageState.chineseReading
     };
 
     window.getTentenLearningLanguages = function getTentenLearningLanguages(nativeLanguageCode) {
@@ -95,19 +116,19 @@
         return true;
     };
 
-    window.buildTentenPreferenceUrl = function buildTentenPreferenceUrl(currentUrl) {
+    window.buildTentenPreferenceUrl = function buildTentenPreferenceUrl(currentUrl, preferences = window.tentenGlobal) {
         const url = new URL(currentUrl || window.location.href);
-        url.searchParams.set('learn', window.tentenGlobal.learningLanguage);
+        url.searchParams.set('learn', preferences.learningLanguage);
         const localePaths = window.__TENTEN_STATIC_LOCALE_PATHS__ || defaultLocalePaths;
-        const localizedSlug = localePaths && localePaths[window.tentenGlobal.interfaceLanguage];
+        const localizedSlug = localePaths && localePaths[preferences.interfaceLanguage];
         if (localizedSlug) {
             url.pathname = `/${localizedSlug}/`;
             url.searchParams.delete('native');
         } else {
-            url.searchParams.set('native', window.tentenGlobal.interfaceLanguage);
+            url.searchParams.set('native', preferences.interfaceLanguage);
         }
-        if (window.tentenGlobal.learningLanguage === 'zh-CN' || window.tentenGlobal.learningLanguage === 'zh-TW') {
-            url.searchParams.set('zhReading', window.tentenGlobal.chineseReading);
+        if (preferences.learningLanguage === 'zh-CN' || preferences.learningLanguage === 'zh-TW') {
+            url.searchParams.set('zhReading', preferences.chineseReading);
         } else {
             url.searchParams.delete('zhReading');
         }

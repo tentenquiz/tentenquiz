@@ -1442,7 +1442,7 @@ function initializeGlobalLanguageSelectors() {
 
     const reloadWithCurrentPreferences = () => {
         if (typeof window.buildTentenPreferenceUrl === 'function') {
-            window.location.assign(window.buildTentenPreferenceUrl(window.location.href));
+            window.location.replace(window.buildTentenPreferenceUrl(window.location.href));
             return;
         }
         window.location.reload();
@@ -1477,6 +1477,28 @@ function initializeGlobalLanguageSelectors() {
     if (repeatRoundToast) repeatRoundToast.textContent = uiT('repeatRound', { round: 1 });
     updateTimerDisplay();
     applyPageLanguage();
+}
+
+function synchronizeLanguageStateAfterPageShow() {
+    if (!window.tentenGlobal || typeof window.resolveTentenLanguageState !== 'function') return;
+
+    const runtimeState = window.tentenGlobal;
+    const resolvedState = window.resolveTentenLanguageState(window.location.href, runtimeState);
+    const languagePairMatches = resolvedState.interfaceLanguage === runtimeState.interfaceLanguage
+        && resolvedState.learningLanguage === runtimeState.learningLanguage;
+
+    if (!languagePairMatches) {
+        const canonicalUrl = typeof window.buildTentenPreferenceUrl === 'function'
+            ? window.buildTentenPreferenceUrl(window.location.href, resolvedState)
+            : window.location.href;
+        window.location.replace(canonicalUrl);
+        return;
+    }
+
+    const interfaceSelect = document.getElementById('interface-language-select');
+    const learningSelect = document.getElementById('learning-language-select');
+    if (interfaceSelect) interfaceSelect.value = runtimeState.interfaceLanguage;
+    if (learningSelect) learningSelect.value = runtimeState.learningLanguage;
 }
 
 const QUIZ_QUESTION_LIMIT = 10;
@@ -3603,6 +3625,8 @@ window.addEventListener('pageshow', () => {
     celebrationsNeedRestart = false;
     restartVisibleCelebrations();
 });
+
+window.addEventListener('pageshow', synchronizeLanguageStateAfterPageShow);
 
 window.addEventListener('resize', () => {
     scheduleOptionButtonHeightSync();
