@@ -422,7 +422,7 @@
                 const appCheck = await import(`https://www.gstatic.com/firebasejs/${version}/firebase-app-check.js`);
                 try {
                     appCheck.initializeAppCheck(app, {
-                        provider: new appCheck.ReCaptchaV3Provider(CONFIG.appCheckSiteKey),
+                        provider: new appCheck.ReCaptchaEnterpriseProvider(CONFIG.appCheckSiteKey),
                         isTokenAutoRefreshEnabled: true
                     });
                 } catch (error) {

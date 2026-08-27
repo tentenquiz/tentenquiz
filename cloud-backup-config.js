@@ -20,7 +20,7 @@
             appId: String(firebaseConfig.appId || '')
         }),
         // Firebase App Check를 적용할 경우 reCAPTCHA 사이트 키를 입력합니다.
-        appCheckSiteKey: String(runtime.appCheckSiteKey || '6LdqfZAtAAAAAD9JXzsgPixJq0Mg9EdP-c25YNkS'),
+        appCheckSiteKey: String(runtime.appCheckSiteKey || '6Ldo5pstAAAAAIuRCMX1CdMmg834TVkU-A49_L1K'),
         collectionName: String(runtime.collectionName || 'tentenCloudBackups'),
         firebaseSdkVersion: String(runtime.firebaseSdkVersion || '12.17.0'),
         maxEncryptedBytes: Number(runtime.maxEncryptedBytes) > 0
