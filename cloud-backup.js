@@ -17,7 +17,10 @@
     const decoder = new TextDecoder();
     const FIRESTORE_CHUNK_CHARACTERS = 600000;
     const FIRESTORE_SCHEMA = 'tentenquiz-firestore-backup';
+    const MILESTONE_BACKUP_DELAY_MS = 1200;
+    const DAILY_QUIZ_BACKUP_DELAY_MS = 3 * 60 * 1000;
     let milestoneSyncTimer = null;
+    let milestoneSyncDueAt = 0;
     let milestoneEventPromise = Promise.resolve();
     let backupToastTimer = null;
     let syncPromise = null;
@@ -456,6 +459,11 @@
         }
     }
 
+    function latestCompatibleProfile(profile) {
+        const latest = readProfile();
+        return latest && latest.recoveryCode === profile.recoveryCode ? latest : profile;
+    }
+
     async function uploadProfile(profile) {
         if (!isConfigured()) throw new Error('Cloud backup is not configured');
         const records = global.TentenLearningRecords;
@@ -510,15 +518,24 @@
                 throw retryError;
             }
         }
+        const latest = latestCompatibleProfile(profile);
+        const uploadedMarkers = new Set(Array.isArray(profile.pendingMilestones) ? profile.pendingMilestones : []);
+        const pendingMilestones = (Array.isArray(latest.pendingMilestones) ? latest.pendingMilestones : [])
+            .filter((markerId) => !uploadedMarkers.has(markerId));
+        const syncedMilestones = Array.from(new Set([
+            ...(Array.isArray(latest.syncedMilestones) ? latest.syncedMilestones : []),
+            ...uploadedMarkers
+        ])).slice(-100);
         return writeProfile({
-            ...profile,
+            ...latest,
             recoveryCode: encrypted.credentials.recoveryCode,
             revision: stored.revision,
             lastSyncedAt: new Date().toISOString(),
             recordCount: payload.recordCount,
-            dirty: false,
+            dirty: pendingMilestones.length > 0,
             conflict: false,
-            pendingMilestones: []
+            pendingMilestones,
+            syncedMilestones
         });
     }
 
@@ -739,6 +756,7 @@
             dirty: false,
             conflict: false,
             pendingMilestones: [],
+            syncedMilestones: [],
             needsRecoveryPrompt: false
         });
         await (global.navigator.storage && global.navigator.storage.persist
@@ -823,6 +841,36 @@
         return Boolean(synced) && synced === localDateKey();
     }
 
+    function getDailyQuizBackupDelayMs() {
+        const testDelay = global.__TENTEN_FIRESTORE_TEST_ADAPTER__
+            ? Number(global.__TENTEN_DAILY_QUIZ_BACKUP_DELAY_MS__)
+            : NaN;
+        return Number.isFinite(testDelay) && testDelay >= 0
+            ? testDelay
+            : DAILY_QUIZ_BACKUP_DELAY_MS;
+    }
+
+    function clearScheduledMilestoneSync() {
+        if (milestoneSyncTimer) global.clearTimeout(milestoneSyncTimer);
+        milestoneSyncTimer = null;
+        milestoneSyncDueAt = 0;
+    }
+
+    function scheduleMilestoneSync(delayMs = MILESTONE_BACKUP_DELAY_MS) {
+        const delay = Math.max(0, Math.floor(Number(delayMs) || 0));
+        const dueAt = Date.now() + delay;
+        // 이미 더 이른 동기화가 예약돼 있다면 daily 중복 이벤트 등으로
+        // 타이머를 뒤로 미루지 않습니다. 섹션 완료는 3분 daily 유예를 앞당깁니다.
+        if (milestoneSyncTimer && milestoneSyncDueAt > 0 && milestoneSyncDueAt <= dueAt) return;
+        clearScheduledMilestoneSync();
+        milestoneSyncDueAt = dueAt;
+        milestoneSyncTimer = global.setTimeout(() => {
+            milestoneSyncTimer = null;
+            milestoneSyncDueAt = 0;
+            syncNow().catch((error) => console.warn('성과 백업 보류:', error));
+        }, delay);
+    }
+
     async function syncNow(options = {}) {
         if (syncPromise) return syncPromise;
         const profile = readProfile();
@@ -835,18 +883,24 @@
             setBusy(true, 'cloudBackupSaving');
             try {
                 const updated = await uploadProfile(profile);
+                if (Array.isArray(updated.pendingMilestones) && updated.pendingMilestones.length > 0) {
+                    scheduleMilestoneSync(MILESTONE_BACKUP_DELAY_MS);
+                } else {
+                    clearScheduledMilestoneSync();
+                }
                 updateControls();
                 showMilestoneBackupToast();
                 return updated;
             } catch (error) {
+                const failedProfile = latestCompatibleProfile(profile);
                 if (error instanceof CloudBackupConflictError) {
-                    writeProfile({ ...profile, dirty: true, conflict: true });
+                    writeProfile({ ...failedProfile, dirty: true, conflict: true });
                     setStatus('cloudBackupConflict');
                 } else if (error.code === 'too-large') {
-                    writeProfile({ ...profile, dirty: true });
+                    writeProfile({ ...failedProfile, dirty: true });
                     setStatus('cloudBackupTooLarge');
                 } else {
-                    writeProfile({ ...profile, dirty: true });
+                    writeProfile({ ...failedProfile, dirty: true });
                     setStatus(global.navigator.onLine ? 'cloudBackupError' : 'cloudBackupOffline');
                 }
                 if (options.alertOnError) global.alert(translate(error instanceof CloudBackupConflictError ? 'cloudBackupConflict' : 'cloudBackupError'));
@@ -879,15 +933,26 @@
         const nativeLanguage = String(detail.nativeLanguage || '');
         const learningLanguage = String(detail.learningLanguage || '');
         const dateKey = String(detail.dateKey || '');
+        const dailyWordCount = Number(detail.dailyWordCount);
+        const allWordsExposed = detail.allWordsExposed === true;
+        const allWordsExposedAtGameStart = detail.allWordsExposedAtGameStart === true;
+        const perfectGame = detail.perfectGame === true;
+        const questionCount = Number(detail.questionCount);
+        const score = Number(detail.score);
+        const expectedDailyWordCount = Number(global.TENTEN_DAILY_QUIZ_WORD_COUNT);
+        const expectedQuestionCount = Number(global.TENTEN_DAILY_QUIZ_GAME_QUESTION_COUNT);
         if (
             !nativeLanguage || !learningLanguage || nativeLanguage === learningLanguage
             || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)
-            || Number(detail.questionCount) !== 10 || Number(detail.score) !== 10
+            || !Number.isInteger(dailyWordCount) || dailyWordCount !== expectedDailyWordCount
+            || !allWordsExposed || !allWordsExposedAtGameStart || !perfectGame
+            || !Number.isInteger(questionCount) || questionCount !== expectedQuestionCount
+            || score !== questionCount
         ) return '';
         return `daily:${nativeLanguage}:${learningLanguage}:${dateKey}`;
     }
 
-    async function queueBackupMarker(markerId) {
+    async function queueBackupMarker(markerId, options = {}) {
         if (!markerId) return null;
         let profile = readProfile();
         if (profile && profile.conflict) return null;
@@ -900,6 +965,7 @@
                 dirty: true,
                 conflict: false,
                 pendingMilestones: [],
+                syncedMilestones: [],
                 needsRecoveryPrompt: true
             };
             await (global.navigator.storage && global.navigator.storage.persist
@@ -907,6 +973,9 @@
                 : false);
         }
 
+        if ((Array.isArray(profile.syncedMilestones) ? profile.syncedMilestones : []).includes(markerId)) {
+            return profile;
+        }
         const pendingMilestones = Array.from(new Set([
             ...(Array.isArray(profile.pendingMilestones) ? profile.pendingMilestones : []),
             markerId
@@ -915,21 +984,20 @@
         updateControls();
 
         if (!global.navigator.onLine) return profile;
-        global.clearTimeout(milestoneSyncTimer);
-        milestoneSyncTimer = global.setTimeout(() => {
-            syncNow().catch((error) => console.warn('성과 백업 보류:', error));
-        }, 1200);
+        scheduleMilestoneSync(options.delayMs);
         return profile;
     }
 
     async function queueMilestoneBackup(detail) {
         const milestoneId = milestoneIdFromDetail(detail);
         if (!milestoneId || Number(detail.questionCount) !== 25) return null;
-        return queueBackupMarker(milestoneId);
+        return queueBackupMarker(milestoneId, { delayMs: MILESTONE_BACKUP_DELAY_MS });
     }
 
     async function queueDailyQuizBackup(detail) {
-        return queueBackupMarker(dailyQuizAchievementIdFromDetail(detail));
+        return queueBackupMarker(dailyQuizAchievementIdFromDetail(detail), {
+            delayMs: getDailyQuizBackupDelayMs()
+        });
     }
 
     function handleSectionCompleted(event) {

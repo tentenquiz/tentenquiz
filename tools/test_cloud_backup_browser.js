@@ -96,6 +96,7 @@ function findBrowserExecutable() {
 
 async function configurePage(page, endpoint) {
     await page.addInitScript((firestoreTestEndpoint) => {
+        window.__TENTEN_DAILY_QUIZ_BACKUP_DELAY_MS__ = 2500;
         window.__TENTEN_CLOUD_BACKUP_CONFIG__ = {
             firebaseConfig: {},
             maxEncryptedBytes: 10 * 1024 * 1024
@@ -249,12 +250,22 @@ async function completeSectionMilestone(page, stage, section) {
             throw new Error('ordinary learning changes must not create a cloud backup');
         }
 
-        const initialAchievement = await firstPage.evaluate(() => (
-            recordDailyQuizAchievement(new Date(), { dispatch: false }).achievement
-        ));
+        const initialAchievement = await firstPage.evaluate(() => recordDailyQuizAchievement(new Date(), {
+            dailyWordCount: 12,
+            allWordsExposed: true,
+            allWordsExposedAtGameStart: true,
+            perfectGame: true,
+            questionCount: 10
+        }).achievement);
         if (initialAchievement.currentStreak !== 1 || initialAchievement.bestStreak !== 1) {
             throw new Error('daily achievement was not prepared for encrypted recovery testing');
         }
+        await firstPage.waitForFunction(() => (
+            window.TentenCloudBackup.readProfile()?.pendingMilestones?.some((id) => id.startsWith('daily:ko:vi:'))
+        ));
+        if (putCount !== 0) throw new Error('daily completion wrote before its grace period');
+        await firstPage.waitForTimeout(300);
+        if (putCount !== 0) throw new Error('daily completion ignored its grace period');
 
         await learnSectionQuestions(firstPage, 1, 'nature_weather', 24, 1);
         await firstPage.waitForFunction(() => {
@@ -286,6 +297,26 @@ async function completeSectionMilestone(page, stage, section) {
         if (!recoveryCode || backups.size !== 1 || putCount !== 1) {
             throw new Error('initial encrypted cloud backup was not created');
         }
+        const mergedMarkerState = await firstPage.evaluate(async () => {
+            const profile = window.TentenCloudBackup.readProfile();
+            const stored = await window.TentenCloudBackup.fetchCloudBackup(profile.recoveryCode);
+            return {
+                pending: profile.pendingMilestones.slice(),
+                achievementCount: stored.payload.dailyQuizAchievements?.length || 0,
+                progressCount: stored.payload.databases.reduce((total, database) => (
+                    total + (database.stores.learningProgress || []).length
+                ), 0)
+            };
+        });
+        if (
+            mergedMarkerState.pending.length !== 0
+            || mergedMarkerState.achievementCount !== 1
+            || mergedMarkerState.progressCount !== 25
+        ) {
+            throw new Error(`daily and section markers were not merged into one payload: ${JSON.stringify(mergedMarkerState)}`);
+        }
+        await firstPage.waitForTimeout(1700);
+        if (putCount !== 1) throw new Error(`the expired daily timer created a duplicate upload: ${putCount}`);
         const storedBody = Array.from(backups.values())[0].body;
         if (storedBody.includes('learningProgress') || storedBody.includes('nature_weather')) {
             throw new Error('plaintext learning data reached the mock server');
@@ -474,6 +505,39 @@ async function completeSectionMilestone(page, stage, section) {
             throw new Error('cloud-backup deletion must not be exposed in the learner UI');
         }
 
+        const reentryContext = await browser.newContext({ acceptDownloads: true });
+        let reentryPage = await reentryContext.newPage();
+        await configurePage(reentryPage, endpoint);
+        await reentryPage.goto(`${origin}/?native=ja&learn=en`, { waitUntil: 'domcontentloaded' });
+        const putsBeforeReentry = putCount;
+        await reentryPage.evaluate(() => recordDailyQuizAchievement(new Date(), {
+            dailyWordCount: 12,
+            allWordsExposed: true,
+            allWordsExposedAtGameStart: true,
+            perfectGame: true,
+            questionCount: 10
+        }));
+        await reentryPage.waitForFunction(() => (
+            window.TentenCloudBackup.readProfile()?.pendingMilestones?.some((id) => id.startsWith('daily:ja:en:'))
+        ));
+        await reentryPage.waitForTimeout(250);
+        if (putCount !== putsBeforeReentry) throw new Error('daily marker uploaded before the page was closed');
+        await reentryPage.close();
+
+        reentryPage = await reentryContext.newPage();
+        await configurePage(reentryPage, endpoint);
+        await reentryPage.goto(`${origin}/?native=ja&learn=en`, { waitUntil: 'domcontentloaded' });
+        await reentryPage.waitForFunction(() => {
+            const profile = window.TentenCloudBackup.readProfile();
+            return profile?.lastSyncedAt && profile.pendingMilestones?.length === 0;
+        }, null, { timeout: 8000 });
+        if (putCount !== putsBeforeReentry + 1) {
+            throw new Error(`page re-entry did not safely flush one pending daily marker: ${putCount - putsBeforeReentry}`);
+        }
+        await reentryContext.close();
+
+        console.log('OK: daily completion waits, merges with a section milestone, and uploads both in one encrypted backup');
+        console.log('OK: closing during the daily grace period preserves the marker and page re-entry safely flushes it');
         console.log('OK: the first section milestone stays non-blocking, returns to the completed section celebration, and uploads only encrypted data');
         console.log('OK: same-day milestones wait locally, while viewing the recovery code forces a fresh backup');
         console.log('OK: a recovery code restores all records, is deleted immediately, and cannot be reused');

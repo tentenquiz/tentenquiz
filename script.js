@@ -34,6 +34,13 @@ function resetCompletionCardCelebrations() {
     });
 }
 
+function restartCompletionBounce(element) {
+    if (!element) return;
+    element.classList.remove('is-celebrating');
+    void element.offsetWidth;
+    element.classList.add('is-celebrating');
+}
+
 function startCompletionCardCelebration(button, order = 0) {
     if (!button || typeof confetti !== 'function') return;
     if (document.visibilityState !== 'visible') return;
@@ -146,7 +153,7 @@ function showPerfectScoreCelebration(correctCount = score) {
     const box = document.getElementById('perfect-score-celebration');
     if (!box) return;
 
-    const message = uiT('perfectScore');
+    const message = uiT('perfectScore', { total: TOTAL_QUESTIONS });
 
     renderPerfectScoreMessage(box, message);
     launchPerfectScoreConfetti(150);
@@ -309,12 +316,22 @@ function bindStaticUiEvents() {
 const VIRTUAL_SECTION_WRONG = 'wrong_bank';
 const VIRTUAL_SECTION_WORDBOOK = 'my_wordbook';
 const VIRTUAL_SECTION_DAILY = 'daily_quiz';
-const DAILY_QUIZ_STORAGE_VERSION = 1;
-const DAILY_QUIZ_QUESTION_COUNT = 10;
+const DAILY_QUIZ_STORAGE_VERSION = 2;
+const LEGACY_DAILY_QUIZ_STORAGE_VERSION = 1;
+const DAILY_QUIZ_WORD_COUNT = 12;
+const DAILY_QUIZ_GAME_QUESTION_COUNT = 10;
+const LEGACY_DAILY_QUIZ_QUESTION_COUNT = 10;
 const DAILY_QUIZ_STORAGE_PREFIX = 'tenten.dailyQuiz.v1';
 const DAILY_QUIZ_ACHIEVEMENT_VERSION = 1;
 const DAILY_QUIZ_ACHIEVEMENT_PREFIX = 'tenten.dailyQuizAchievement.v1';
 const DAILY_QUIZ_ACHIEVEMENT_DATE_LIMIT = 800;
+const DAILY_QUIZ_SLOT_TEMPLATE = [
+    'confidence', 'wrong', 'new', 'wordbook', 'due', 'wrong',
+    'confidence', 'new', 'wrong', 'wordbook', 'due', 'wrong'
+];
+window.TENTEN_DAILY_QUIZ_WORD_COUNT = DAILY_QUIZ_WORD_COUNT;
+window.TENTEN_DAILY_QUIZ_GAME_QUESTION_COUNT = DAILY_QUIZ_GAME_QUESTION_COUNT;
+window.TENTEN_DAILY_QUIZ_QUESTION_COUNT = DAILY_QUIZ_GAME_QUESTION_COUNT;
 let activeDailyQuizSession = null;
 let dailyQuizBannerCelebrationTimer = null;
 let dailyQuizBannerCelebrationStarter = null;
@@ -972,6 +989,7 @@ function recordDailyQuizAchievement(date = new Date(), options = {}) {
     if (!result.isNew) return result;
     const achievement = saveDailyQuizAchievement(result.achievement);
     if (options.dispatch !== false) {
+        const questionCount = Math.max(1, Math.floor(Number(options.questionCount) || DAILY_QUIZ_GAME_QUESTION_COUNT));
         window.dispatchEvent(new CustomEvent('tenten-daily-quiz-completed', {
             detail: {
                 nativeLanguage,
@@ -982,8 +1000,12 @@ function recordDailyQuizAchievement(date = new Date(), options = {}) {
                 currentStreak: achievement.currentStreak,
                 bestStreak: achievement.bestStreak,
                 totalClearDays: achievement.totalClearDays,
-                questionCount: DAILY_QUIZ_QUESTION_COUNT,
-                score: DAILY_QUIZ_QUESTION_COUNT
+                dailyWordCount: Math.max(1, Math.floor(Number(options.dailyWordCount) || DAILY_QUIZ_WORD_COUNT)),
+                allWordsExposed: options.allWordsExposed === true,
+                allWordsExposedAtGameStart: options.allWordsExposedAtGameStart === true,
+                perfectGame: options.perfectGame === true,
+                questionCount,
+                score: questionCount
             }
         }));
     }
@@ -1023,7 +1045,10 @@ function stopDailyQuizBannerCelebration(button = document.getElementById('daily-
         dailyQuizBannerCelebrationBurst.reset();
     }
     dailyQuizBannerCelebrationBurst = null;
-    if (button) button.dataset.celebrationMode = '';
+    if (button) {
+        button.dataset.celebrationMode = '';
+        button.querySelector('.daily-quiz-status')?.classList.remove('is-celebrating');
+    }
 }
 
 function startDailyQuizBannerCelebration(button, cleared) {
@@ -1055,6 +1080,7 @@ function startDailyQuizBannerCelebration(button, cleared) {
             return false;
         }
         const isRtl = document.documentElement.dir === 'rtl';
+        if (cleared) restartCompletionBounce(button.querySelector('.daily-quiz-status'));
         burst({
             particleCount: cleared ? 13 : 6,
             spread: cleared ? 68 : 48,
@@ -1075,7 +1101,7 @@ function startDailyQuizBannerCelebration(button, cleared) {
     dailyQuizBannerCelebrationStarter = setTimeout(() => {
         dailyQuizBannerCelebrationStarter = null;
         if (!celebrate()) return;
-        dailyQuizBannerCelebrationTimer = setInterval(celebrate, cleared ? 2300 : 3800);
+        dailyQuizBannerCelebrationTimer = setInterval(celebrate, cleared ? 3000 : 3800);
     }, 350);
 }
 
@@ -1089,28 +1115,147 @@ function findDailyQuizQuestion(questionKey) {
     return activeQuizData.find((item) => getDailyQuizQuestionKey(item) === key) || null;
 }
 
-function readDailyQuizSession() {
+function getDailyQuizSessionQuestionCount(session) {
+    const currentCount = session?.currentGame?.questionKeys?.length;
+    return Number.isInteger(currentCount) && currentCount > 0
+        ? currentCount
+        : DAILY_QUIZ_GAME_QUESTION_COUNT;
+}
+
+function readStoredDailyQuizSession() {
     try {
         const raw = window.localStorage.getItem(getDailyQuizStorageKey());
-        if (!raw) return null;
-        const session = JSON.parse(raw);
-        if (
-            !session ||
-            session.version !== DAILY_QUIZ_STORAGE_VERSION ||
-            session.dateKey !== getDailyQuizDateKey() ||
-            !Array.isArray(session.questionKeys) ||
-            session.questionKeys.length !== DAILY_QUIZ_QUESTION_COUNT
-        ) {
-            return null;
-        }
-        if (!session.attempt || !Array.isArray(session.attempt.results)) {
-            session.attempt = { results: [], completed: false, startedAt: Date.now() };
-        }
-        return session;
+        return raw ? JSON.parse(raw) : null;
     } catch (error) {
         console.warn('오늘의 퀴즈 로컬 기록을 읽지 못했습니다:', error);
         return null;
     }
+}
+
+function normalizeDailyQuizResults(questionKeys, results) {
+    const normalizedResults = Array.isArray(results) ? results : [];
+    if (normalizedResults.length > questionKeys.length) return null;
+    const validStatuses = new Set(['correct', 'wrong', 'timeout']);
+    const isValid = normalizedResults.every((result, index) => (
+        result &&
+        String(result.questionKey || '') === questionKeys[index] &&
+        validStatuses.has(result.status)
+    ));
+    return isValid ? normalizedResults : null;
+}
+
+function normalizeDailyQuizGame(game, dailyWordKeySet) {
+    if (!game || typeof game !== 'object' || !Array.isArray(game.questionKeys)) return null;
+    const questionKeys = game.questionKeys.map(String);
+    if (
+        questionKeys.length !== DAILY_QUIZ_GAME_QUESTION_COUNT ||
+        new Set(questionKeys).size !== DAILY_QUIZ_GAME_QUESTION_COUNT ||
+        questionKeys.some((key) => !dailyWordKeySet.has(key))
+    ) return null;
+    const results = normalizeDailyQuizResults(questionKeys, game.results);
+    if (!results || (game.completed && results.length !== DAILY_QUIZ_GAME_QUESTION_COUNT)) return null;
+    const shownQuestionKeys = Array.from(new Set(
+        (Array.isArray(game.shownQuestionKeys) ? game.shownQuestionKeys : [])
+            .map(String)
+            .filter((key) => questionKeys.includes(key))
+    ));
+    return {
+        ...game,
+        questionKeys,
+        shownQuestionKeys,
+        results,
+        allWordsExposedAtStart: game.allWordsExposedAtStart === true,
+        completed: Boolean(game.completed),
+        startedAt: Math.max(0, Number(game.startedAt) || Date.now())
+    };
+}
+
+function createDailyQuizWordStats(questionKeys) {
+    return Object.fromEntries(questionKeys.map((questionKey) => [questionKey, {
+        exposureCount: 0,
+        correctCount: 0,
+        wrongCount: 0,
+        timeoutCount: 0,
+        needsReview: false
+    }]));
+}
+
+function normalizeDailyQuizWordStats(questionKeys, source) {
+    const wordStats = {};
+    questionKeys.forEach((questionKey) => {
+        const value = source && typeof source[questionKey] === 'object' ? source[questionKey] : {};
+        wordStats[questionKey] = {
+            exposureCount: Math.max(0, Math.floor(Number(value.exposureCount) || 0)),
+            correctCount: Math.max(0, Math.floor(Number(value.correctCount) || 0)),
+            wrongCount: Math.max(0, Math.floor(Number(value.wrongCount) || 0)),
+            timeoutCount: Math.max(0, Math.floor(Number(value.timeoutCount) || 0)),
+            needsReview: value.needsReview === true
+        };
+    });
+    return wordStats;
+}
+
+function readDailyQuizSession() {
+    const session = readStoredDailyQuizSession();
+    if (
+        !session ||
+        session.version !== DAILY_QUIZ_STORAGE_VERSION ||
+        session.dateKey !== getDailyQuizDateKey() ||
+        !Array.isArray(session.dailyWordKeys)
+    ) return null;
+
+    const dailyWordKeys = session.dailyWordKeys.map(String);
+    const legacyCompleted = Boolean(session.legacyCompleted && session.cleared);
+    const expectedWordCount = legacyCompleted ? LEGACY_DAILY_QUIZ_QUESTION_COUNT : DAILY_QUIZ_WORD_COUNT;
+    if (
+        dailyWordKeys.length !== expectedWordCount ||
+        new Set(dailyWordKeys).size !== expectedWordCount
+    ) return null;
+
+    const dailyWordKeySet = new Set(dailyWordKeys);
+    const currentGame = normalizeDailyQuizGame(session.currentGame, dailyWordKeySet);
+    if (!currentGame) return null;
+    const wordStats = normalizeDailyQuizWordStats(dailyWordKeys, session.wordStats);
+    const all12Exposed = dailyWordKeys.every((key) => wordStats[key].exposureCount > 0);
+    const completedGames = (Array.isArray(session.games) ? session.games : []).filter((game) => (
+        game &&
+        Array.isArray(game.questionKeys) &&
+        game.questionKeys.length === DAILY_QUIZ_GAME_QUESTION_COUNT &&
+        new Set(game.questionKeys).size === DAILY_QUIZ_GAME_QUESTION_COUNT &&
+        game.questionKeys.every((key) => dailyWordKeySet.has(String(key))) &&
+        Number.isInteger(Number(game.score)) &&
+        Number(game.score) >= 0 &&
+        Number(game.score) <= DAILY_QUIZ_GAME_QUESTION_COUNT
+    )).map((game) => ({
+        questionKeys: game.questionKeys.map(String),
+        score: Number(game.score),
+        allWordsExposedAtStart: game.allWordsExposedAtStart === true,
+        completedAt: Math.max(0, Number(game.completedAt) || 0)
+    }));
+    const perfectGame = legacyCompleted || completedGames.some((game) => (
+        game.allWordsExposedAtStart && game.score === DAILY_QUIZ_GAME_QUESTION_COUNT
+    ));
+    if (session.cleared && !legacyCompleted && (!all12Exposed || !perfectGame)) return null;
+    if (
+        legacyCompleted &&
+        (
+            !currentGame.completed ||
+            currentGame.results.filter((result) => result.status === 'correct').length !== LEGACY_DAILY_QUIZ_QUESTION_COUNT
+        )
+    ) return null;
+
+    return {
+        ...session,
+        dailyWordCount: expectedWordCount,
+        gameQuestionCount: DAILY_QUIZ_GAME_QUESTION_COUNT,
+        dailyWordKeys,
+        wordStats,
+        games: completedGames,
+        currentGame,
+        all12Exposed,
+        perfectGame,
+        cleared: Boolean(session.cleared)
+    };
 }
 
 function saveDailyQuizSession(session) {
@@ -1127,7 +1272,7 @@ function takeOrderedDailyItems(source, count, usedKeys) {
     const picked = [];
     for (const item of source || []) {
         if (!item) continue;
-        const key = getItemUniqueKey(item);
+        const key = getDailyQuizQuestionKey(item);
         if (usedKeys.has(key)) continue;
         usedKeys.add(key);
         picked.push(item);
@@ -1136,7 +1281,7 @@ function takeOrderedDailyItems(source, count, usedKeys) {
     return picked;
 }
 
-async function buildDailyQuizQuestions() {
+async function loadDailyQuizCandidateContext() {
     let wrongRecords = [];
     let wordbookRecords = [];
     let progressRecords = [];
@@ -1150,15 +1295,28 @@ async function buildDailyQuizQuestions() {
         console.warn('오늘의 퀴즈 복습 기록을 불러오지 못해 기본 문제로 구성합니다:', error);
     }
 
+    const activeByQuestionKey = new Map(
+        activeQuizData.map((item) => [getDailyQuizQuestionKey(item), item])
+    );
+    const activeByUniqueKey = new Map(
+        activeQuizData.map((item) => [getItemUniqueKey(item), item])
+    );
+    const reconnectToActiveQuestion = (record) => {
+        const connected = reconnectStoredQuizItem(record);
+        if (!connected) return null;
+        return activeByQuestionKey.get(getDailyQuizQuestionKey(connected))
+            || activeByUniqueKey.get(getItemUniqueKey(connected))
+            || null;
+    };
     const wrongPool = wrongRecords
         .slice()
         .sort((first, second) => Number(first.lastWrongAt || 0) - Number(second.lastWrongAt || 0))
-        .map(reconnectStoredQuizItem)
+        .map(reconnectToActiveQuestion)
         .filter(Boolean);
     const wordbookPool = wordbookRecords
         .slice()
         .sort((first, second) => Number(first.savedAt || 0) - Number(second.savedAt || 0))
-        .map(reconnectStoredQuizItem)
+        .map(reconnectToActiveQuestion)
         .filter(Boolean);
     const progressById = new Map(progressRecords.map((record) => [String(record.id || ''), record]));
     const learnedPool = activeQuizData
@@ -1173,64 +1331,273 @@ async function buildDailyQuizQuestions() {
         .sort((first, second) => Number(second.progress.learnedAt || 0) - Number(first.progress.learnedAt || 0))
         .map((entry) => entry.item);
 
-    const usedKeys = new Set();
-    const wrong = takeRandomUniqueItems(wrongPool, 4, usedKeys);
-    const wordbook = takeRandomUniqueItems(wordbookPool, 2, usedKeys);
-    const due = takeOrderedDailyItems(duePool, 2, usedKeys);
-    const confidence = takeOrderedDailyItems(confidencePool, 2, usedKeys);
-    const hardReview = [...wrong, ...wordbook, ...due];
-    const ordered = [];
-
-    if (confidence[0]) ordered.push(confidence[0]);
-    if (hardReview[0]) ordered.push(hardReview[0]);
-    if (hardReview[1]) ordered.push(hardReview[1]);
-    if (confidence[1]) ordered.push(confidence[1]);
-    ordered.push(...hardReview.slice(2));
-
-    const stageOnePool = activeQuizData.filter((item) => Number(item.stage) === 1);
-    ordered.push(...takeRandomUniqueItems(stageOnePool, DAILY_QUIZ_QUESTION_COUNT - ordered.length, usedKeys));
-    ordered.push(...takeRandomUniqueItems(activeQuizData, DAILY_QUIZ_QUESTION_COUNT - ordered.length, usedKeys));
-
-    return ordered.slice(0, DAILY_QUIZ_QUESTION_COUNT);
+    const recordedQuestionKeys = new Set(
+        [...wrongPool, ...wordbookPool].map(getDailyQuizQuestionKey)
+    );
+    const newPool = activeQuizData.filter((item) => (
+        !recordedQuestionKeys.has(getDailyQuizQuestionKey(item)) &&
+        !progressById.has(getQuestionProgressId(item))
+    ));
+    return {
+        wrongPool,
+        wordbookPool,
+        duePool,
+        confidencePool,
+        newPool,
+        newStageOnePool: newPool.filter((item) => Number(item.stage) === 1),
+        stageOnePool: activeQuizData.filter((item) => Number(item.stage) === 1),
+        allPool: activeQuizData
+    };
 }
 
-async function getOrCreateDailyQuizSession() {
-    const stored = readDailyQuizSession();
-    if (stored && stored.questionKeys.every((key) => Boolean(findDailyQuizQuestion(key)))) {
-        activeDailyQuizSession = stored;
-        return stored;
+function takeDailyQuizFallbackItems(context, count, usedKeys) {
+    const picked = [];
+    const take = (source) => {
+        picked.push(...takeRandomUniqueItems(source, count - picked.length, usedKeys));
+    };
+    take(context.newStageOnePool);
+    take(context.newPool);
+    take(context.stageOnePool);
+    take(context.allPool);
+    return picked;
+}
+
+function composeDailyQuizSlotOrder(buckets, fallbackItems) {
+    const queues = Object.fromEntries(
+        Object.entries(buckets).map(([key, items]) => [key, items.slice()])
+    );
+    let fallbackIndex = 0;
+    return DAILY_QUIZ_SLOT_TEMPLATE
+        .map((source) => queues[source].shift() || fallbackItems[fallbackIndex++])
+        .filter(Boolean);
+}
+
+async function buildDailyQuizQuestions() {
+    const context = await loadDailyQuizCandidateContext();
+
+    const usedKeys = new Set();
+    const buckets = {
+        wrong: takeRandomUniqueItems(context.wrongPool, 4, usedKeys),
+        wordbook: takeRandomUniqueItems(context.wordbookPool, 2, usedKeys),
+        due: takeOrderedDailyItems(context.duePool, 2, usedKeys),
+        confidence: takeOrderedDailyItems(context.confidencePool, 2, usedKeys),
+        new: []
+    };
+    buckets.new.push(...takeRandomUniqueItems(context.newStageOnePool, 2, usedKeys));
+    buckets.new.push(...takeRandomUniqueItems(context.newPool, 2 - buckets.new.length, usedKeys));
+
+    const selectedCount = Object.values(buckets).reduce((total, items) => total + items.length, 0);
+    const fallbackItems = takeDailyQuizFallbackItems(
+        context,
+        DAILY_QUIZ_WORD_COUNT - selectedCount,
+        usedKeys
+    );
+    return composeDailyQuizSlotOrder(buckets, fallbackItems).slice(0, DAILY_QUIZ_WORD_COUNT);
+}
+
+function shuffleDailyQuizKeys(questionKeys) {
+    return shuffleArray(questionKeys.slice());
+}
+
+function buildNextDailyQuizGameQuestionKeys(session) {
+    const dailyWordKeys = session.dailyWordKeys.slice();
+    if (dailyWordKeys.length < DAILY_QUIZ_GAME_QUESTION_COUNT) return [];
+    if (!Array.isArray(session.games) || session.games.length === 0) {
+        return dailyWordKeys.slice(0, DAILY_QUIZ_GAME_QUESTION_COUNT);
     }
 
+    const wordStats = session.wordStats || {};
+    const unseen = dailyWordKeys.filter((key) => Number(wordStats[key]?.exposureCount || 0) === 0);
+    const unseenSet = new Set(unseen);
+    const needsReview = dailyWordKeys.filter((key) => !unseenSet.has(key) && wordStats[key]?.needsReview === true);
+    const prioritizedSet = new Set([...unseen, ...needsReview]);
+    const remaining = dailyWordKeys.filter((key) => !prioritizedSet.has(key));
+    const remainingByExposure = new Map();
+    remaining.forEach((key) => {
+        const exposureCount = Math.max(0, Number(wordStats[key]?.exposureCount || 0));
+        if (!remainingByExposure.has(exposureCount)) remainingByExposure.set(exposureCount, []);
+        remainingByExposure.get(exposureCount).push(key);
+    });
+    const reviewOrder = Array.from(remainingByExposure.keys())
+        .sort((left, right) => left - right)
+        .flatMap((exposureCount) => shuffleDailyQuizKeys(remainingByExposure.get(exposureCount)));
+    return [
+        ...shuffleDailyQuizKeys(unseen),
+        ...shuffleDailyQuizKeys(needsReview),
+        ...reviewOrder
+    ].slice(0, DAILY_QUIZ_GAME_QUESTION_COUNT);
+}
+
+function createDailyQuizGame(session) {
+    const questionKeys = buildNextDailyQuizGameQuestionKeys(session);
+    if (questionKeys.length !== DAILY_QUIZ_GAME_QUESTION_COUNT) {
+        throw new Error(`오늘의 퀴즈 한 게임 ${DAILY_QUIZ_GAME_QUESTION_COUNT}문제를 구성할 수 없습니다.`);
+    }
+    session.currentGame = {
+        gameNumber: (Array.isArray(session.games) ? session.games.length : 0) + 1,
+        questionKeys,
+        shownQuestionKeys: [],
+        results: [],
+        allWordsExposedAtStart: session.all12Exposed === true,
+        completed: false,
+        startedAt: Date.now()
+    };
+    return session.currentGame;
+}
+
+async function createDailyQuizSession() {
     const questions = await buildDailyQuizQuestions();
-    if (questions.length !== DAILY_QUIZ_QUESTION_COUNT) {
-        throw new Error('오늘의 퀴즈 10문제를 구성할 수 없습니다.');
+    if (questions.length !== DAILY_QUIZ_WORD_COUNT) {
+        throw new Error(`오늘의 퀴즈 ${DAILY_QUIZ_WORD_COUNT}단어를 구성할 수 없습니다.`);
     }
     const now = Date.now();
+    const dailyWordKeys = questions.map(getDailyQuizQuestionKey);
     const session = {
         version: DAILY_QUIZ_STORAGE_VERSION,
         dateKey: getDailyQuizDateKey(),
-        questionKeys: questions.map(getDailyQuizQuestionKey),
+        dailyWordCount: DAILY_QUIZ_WORD_COUNT,
+        gameQuestionCount: DAILY_QUIZ_GAME_QUESTION_COUNT,
+        dailyWordKeys,
+        wordStats: createDailyQuizWordStats(dailyWordKeys),
+        games: [],
+        all12Exposed: false,
+        perfectGame: false,
         cleared: false,
         attempts: 0,
         lastScore: null,
-        createdAt: now,
-        attempt: { results: [], completed: false, startedAt: now }
+        createdAt: now
     };
+    createDailyQuizGame(session);
     saveDailyQuizSession(session);
     return session;
+}
+
+function normalizeLegacyDailyQuizAttempt(session) {
+    const attempt = session?.attempt && typeof session.attempt === 'object'
+        ? session.attempt
+        : { results: [], completed: false, startedAt: Date.now() };
+    const results = normalizeDailyQuizResults(session.questionKeys, attempt.results);
+    return results ? { ...attempt, results, completed: Boolean(attempt.completed) } : null;
+}
+
+function applyLegacyDailyQuizResults(wordStats, results) {
+    results.forEach((result) => {
+        const stats = wordStats[result.questionKey];
+        if (!stats) return;
+        stats.exposureCount += 1;
+        if (result.status === 'correct') {
+            stats.correctCount += 1;
+            stats.needsReview = false;
+        } else if (result.status === 'timeout') {
+            stats.timeoutCount += 1;
+            stats.needsReview = true;
+        } else {
+            stats.wrongCount += 1;
+            stats.needsReview = true;
+        }
+    });
+}
+
+async function migrateDailyQuizSessionIfNeeded() {
+    const stored = readStoredDailyQuizSession();
+    if (!stored || stored.version === DAILY_QUIZ_STORAGE_VERSION) return readDailyQuizSession();
+    if (
+        stored.version !== LEGACY_DAILY_QUIZ_STORAGE_VERSION ||
+        stored.dateKey !== getDailyQuizDateKey() ||
+        !Array.isArray(stored.questionKeys) ||
+        stored.questionKeys.length !== LEGACY_DAILY_QUIZ_QUESTION_COUNT ||
+        new Set(stored.questionKeys).size !== LEGACY_DAILY_QUIZ_QUESTION_COUNT
+    ) return null;
+
+    const existingQuestions = stored.questionKeys.map(findDailyQuizQuestion);
+    if (existingQuestions.some((question) => !question)) return null;
+    const attempt = normalizeLegacyDailyQuizAttempt(stored);
+    if (!attempt) return null;
+    if (attempt.completed && attempt.results.length !== LEGACY_DAILY_QUIZ_QUESTION_COUNT) return null;
+    const resultScore = attempt.results.filter((result) => result.status === 'correct').length;
+    const isLegacyClear = Boolean(
+        stored.cleared &&
+        attempt.completed &&
+        resultScore === LEGACY_DAILY_QUIZ_QUESTION_COUNT
+    );
+    let dailyWordKeys = existingQuestions.map(getDailyQuizQuestionKey);
+    if (!isLegacyClear) {
+        const context = await loadDailyQuizCandidateContext();
+        const usedKeys = new Set(dailyWordKeys);
+        const additions = takeDailyQuizFallbackItems(context, 2, usedKeys);
+        if (additions.length !== 2) return null;
+        dailyWordKeys = [...dailyWordKeys, ...additions.map(getDailyQuizQuestionKey)];
+    }
+    const wordStats = createDailyQuizWordStats(dailyWordKeys);
+    applyLegacyDailyQuizResults(wordStats, attempt.results);
+    const now = Date.now();
+    const currentGame = {
+        gameNumber: 1,
+        questionKeys: existingQuestions.map(getDailyQuizQuestionKey),
+        shownQuestionKeys: attempt.results.map((result) => result.questionKey),
+        results: attempt.results,
+        allWordsExposedAtStart: isLegacyClear,
+        completed: attempt.completed,
+        startedAt: Number(attempt.startedAt || stored.createdAt || now),
+        completedAt: attempt.completed ? Number(attempt.completedAt || now) : undefined
+    };
+    const migrated = {
+        version: DAILY_QUIZ_STORAGE_VERSION,
+        dateKey: stored.dateKey,
+        dailyWordCount: dailyWordKeys.length,
+        gameQuestionCount: DAILY_QUIZ_GAME_QUESTION_COUNT,
+        dailyWordKeys,
+        wordStats,
+        games: attempt.completed ? [{
+            questionKeys: currentGame.questionKeys.slice(),
+            score: resultScore,
+            allWordsExposedAtStart: isLegacyClear,
+            completedAt: currentGame.completedAt
+        }] : [],
+        currentGame,
+        all12Exposed: isLegacyClear,
+        perfectGame: isLegacyClear,
+        cleared: isLegacyClear,
+        clearedAt: isLegacyClear ? Number(stored.clearedAt || attempt.completedAt || now) : undefined,
+        legacyCompleted: isLegacyClear,
+        attempts: attempt.completed ? Math.max(1, Number(stored.attempts) || 1) : Math.max(0, Number(stored.attempts) || 0),
+        lastScore: attempt.completed ? resultScore : stored.lastScore,
+        lastAttemptQuestionCount: attempt.completed ? LEGACY_DAILY_QUIZ_QUESTION_COUNT : undefined,
+        createdAt: Number(stored.createdAt || now)
+    };
+    saveDailyQuizSession(migrated);
+    return migrated;
+}
+
+async function getOrCreateDailyQuizSession() {
+    const stored = readDailyQuizSession() || await migrateDailyQuizSessionIfNeeded();
+    if (stored && stored.dailyWordKeys.every((key) => Boolean(findDailyQuizQuestion(key)))) {
+        activeDailyQuizSession = stored;
+        return stored;
+    }
+    return createDailyQuizSession();
 }
 
 function resetDailyQuizAttempt() {
     const session = activeDailyQuizSession || readDailyQuizSession();
     if (!session) return;
-    session.attempt = { results: [], completed: false, startedAt: Date.now() };
+    createDailyQuizGame(session);
     saveDailyQuizSession(session);
+}
+
+function getDailyQuizRemainingWordCount(session) {
+    if (!session?.dailyWordKeys || !session?.wordStats) return DAILY_QUIZ_WORD_COUNT;
+    return session.dailyWordKeys.reduce(
+        (count, key) => count + (Number(session.wordStats[key]?.exposureCount || 0) === 0 ? 1 : 0),
+        0
+    );
 }
 
 function updateDailyQuizBanner() {
     const button = document.getElementById('daily-quiz-banner');
     const status = document.getElementById('daily-quiz-status');
     const subtitle = document.getElementById('daily-quiz-subtitle');
+    const detail = document.getElementById('daily-quiz-detail');
     if (!button || !status || !subtitle) return;
 
     const isStageScreen = (window.selectionStep || 'stage') === 'stage';
@@ -1244,6 +1611,11 @@ function updateDailyQuizBanner() {
     const session = readDailyQuizSession();
     activeDailyQuizSession = session;
     button.classList.toggle('is-cleared', Boolean(session?.cleared));
+    button.classList.remove('is-learning', 'is-perfect-target');
+    if (detail) {
+        detail.hidden = true;
+        detail.textContent = '';
+    }
     if (session?.cleared) {
         const streak = Math.max(1, Number(achievement.currentStreak) || 1);
         status.textContent = streak === 1
@@ -1252,13 +1624,26 @@ function updateDailyQuizBanner() {
         subtitle.textContent = uiT('dailyQuizCompletedSubtitle', {
             count: Math.max(streak, Number(achievement.bestStreak) || 1)
         });
-    } else if (session?.attempt?.completed) {
-        status.textContent = uiT('dailyQuizRetryStatus', { score: Number(session.lastScore || 0) });
-        subtitle.textContent = uiT('dailyQuizSubtitle');
-    } else if (session?.attempt?.results?.length) {
+    } else if (session?.currentGame?.completed) {
+        if (session.all12Exposed) {
+            button.classList.add('is-perfect-target');
+            status.textContent = uiT('dailyQuizRetryAction');
+            subtitle.textContent = uiT('dailyQuizAllWordsTitle');
+            if (detail) {
+                detail.textContent = uiT('dailyQuizPerfectPrompt');
+                detail.hidden = false;
+            }
+        } else {
+            button.classList.add('is-learning');
+            const remaining = getDailyQuizRemainingWordCount(session);
+            status.textContent = uiT('dailyQuizContinueLearning');
+            subtitle.textContent = uiT('dailyQuizWordsRemaining', { count: remaining });
+        }
+    } else if (session?.currentGame?.results?.length) {
+        const questionCount = getDailyQuizSessionQuestionCount(session);
         status.textContent = uiT('dailyQuizContinue', {
-            current: Math.min(DAILY_QUIZ_QUESTION_COUNT, session.attempt.results.length + 1),
-            total: DAILY_QUIZ_QUESTION_COUNT
+            current: Math.min(questionCount, session.currentGame.results.length + 1),
+            total: questionCount
         });
         subtitle.textContent = uiT('dailyQuizSubtitle');
     } else {
@@ -1280,10 +1665,14 @@ async function startDailyQuiz(operationToken = quizNavigationOperationToken) {
         stopDailyQuizBannerCelebration();
         const session = await getOrCreateDailyQuizSession();
         if (!canContinueQuizNavigation(operationToken, VIRTUAL_SECTION_DAILY)) return;
-        if (session.attempt?.completed || session.attempt?.results?.length >= DAILY_QUIZ_QUESTION_COUNT) {
+        if (
+            session.currentGame?.completed ||
+            session.currentGame?.results?.length >= getDailyQuizSessionQuestionCount(session)
+        ) {
             resetDailyQuizAttempt();
         }
-        const firstQuestion = findDailyQuizQuestion(session.questionKeys[0]);
+        const currentSession = activeDailyQuizSession || session;
+        const firstQuestion = findDailyQuizQuestion(currentSession.currentGame.questionKeys[0]);
         if (firstQuestion && typeof unlockAudio === 'function') {
             await unlockAudio(firstQuestion.category || firstQuestion.section || '', Number(firstQuestion.stage) || 1);
         }
@@ -1329,8 +1718,8 @@ function makeDailyQuizResultItem(question, status) {
 function restoreDailyQuizAttempt() {
     if (window.selectedQuizSection !== VIRTUAL_SECTION_DAILY) return false;
     const session = activeDailyQuizSession || readDailyQuizSession();
-    const results = session?.attempt?.results;
-    if (!Array.isArray(results) || results.length === 0 || session.attempt.completed) return false;
+    const results = session?.currentGame?.results;
+    if (!Array.isArray(results) || results.length === 0 || session.currentGame.completed) return false;
 
     const validResults = results.slice(0, shuffledQuestions.length).filter((result, index) =>
         result && result.questionKey === getDailyQuizQuestionKey(shuffledQuestions[index])
@@ -1356,14 +1745,40 @@ function recordDailyQuizAttemptResult(question, status) {
     if (window.selectedQuizSection !== VIRTUAL_SECTION_DAILY) return;
     const session = activeDailyQuizSession || readDailyQuizSession();
     if (!session || session.dateKey !== getDailyQuizDateKey()) return;
-    const results = Array.isArray(session.attempt?.results) ? session.attempt.results.slice(0, currentIdx) : [];
+    const results = Array.isArray(session.currentGame?.results) ? session.currentGame.results.slice(0, currentIdx) : [];
     results[currentIdx] = { questionKey: getDailyQuizQuestionKey(question), status };
-    session.attempt = {
-        ...(session.attempt || {}),
-        results,
-        completed: false,
-        startedAt: Number(session.attempt?.startedAt || Date.now())
-    };
+    session.currentGame.results = results;
+    session.currentGame.completed = false;
+    const stats = session.wordStats[results[currentIdx].questionKey];
+    if (stats) {
+        if (status === 'correct') {
+            stats.correctCount += 1;
+            stats.needsReview = false;
+        } else if (status === 'timeout') {
+            stats.timeoutCount += 1;
+            stats.needsReview = true;
+        } else {
+            stats.wrongCount += 1;
+            stats.needsReview = true;
+        }
+    }
+    saveDailyQuizSession(session);
+}
+
+function markDailyQuizQuestionShown(question) {
+    if (window.selectedQuizSection !== VIRTUAL_SECTION_DAILY) return;
+    const session = activeDailyQuizSession || readDailyQuizSession();
+    const questionKey = getDailyQuizQuestionKey(question);
+    if (!session?.currentGame?.questionKeys.includes(questionKey)) return;
+    const shown = new Set(session.currentGame.shownQuestionKeys || []);
+    if (shown.has(questionKey)) return;
+    shown.add(questionKey);
+    session.currentGame.shownQuestionKeys = Array.from(shown);
+    const stats = session.wordStats[questionKey];
+    if (stats) stats.exposureCount += 1;
+    session.all12Exposed = session.dailyWordKeys.every(
+        (key) => Number(session.wordStats[key]?.exposureCount || 0) > 0
+    );
     saveDailyQuizSession(session);
 }
 
@@ -1371,20 +1786,47 @@ function completeDailyQuizAttempt(finalScore) {
     if (window.selectedQuizSection !== VIRTUAL_SECTION_DAILY) return;
     const session = activeDailyQuizSession || readDailyQuizSession();
     if (!session) return;
-    session.attempt = {
-        ...(session.attempt || {}),
-        completed: true,
-        completedAt: Date.now()
-    };
+    if (session.currentGame.completed) return;
+    const results = Array.isArray(session.currentGame.results) ? session.currentGame.results : [];
+    if (results.length !== DAILY_QUIZ_GAME_QUESTION_COUNT) return;
+    const verifiedScore = results.filter((result) => result.status === 'correct').length;
+    if (Number(finalScore) !== verifiedScore) return;
+    const completedAt = Date.now();
+    session.currentGame.completed = true;
+    session.currentGame.completedAt = completedAt;
     session.attempts = Number(session.attempts || 0) + 1;
-    session.lastScore = Number(finalScore || 0);
-    if (finalScore === DAILY_QUIZ_QUESTION_COUNT) {
+    session.lastScore = verifiedScore;
+    session.lastAttemptQuestionCount = DAILY_QUIZ_GAME_QUESTION_COUNT;
+    session.games = Array.isArray(session.games) ? session.games : [];
+    session.games.push({
+        questionKeys: session.currentGame.questionKeys.slice(),
+        score: session.lastScore,
+        allWordsExposedAtStart: session.currentGame.allWordsExposedAtStart === true,
+        completedAt
+    });
+    session.all12Exposed = session.dailyWordKeys.every(
+        (key) => Number(session.wordStats[key]?.exposureCount || 0) > 0
+    );
+    const qualifiesForCompletion = Boolean(
+        session.currentGame.allWordsExposedAtStart === true
+        && session.lastScore === DAILY_QUIZ_GAME_QUESTION_COUNT
+    );
+    session.perfectGame = Boolean(session.perfectGame || qualifiesForCompletion);
+    const clearedNow = !session.cleared && session.all12Exposed && qualifiesForCompletion;
+    if (clearedNow) {
         session.cleared = true;
-        session.clearedAt = Date.now();
+        session.clearedAt = completedAt;
     }
     saveDailyQuizSession(session);
-    if (finalScore === DAILY_QUIZ_QUESTION_COUNT) {
-        recordDailyQuizAchievement(new Date(session.clearedAt));
+    if (clearedNow) {
+        recordDailyQuizAchievement(new Date(session.clearedAt), {
+            dailyWordCount: DAILY_QUIZ_WORD_COUNT,
+            allWordsExposed: true,
+            allWordsExposedAtGameStart: true,
+            perfectGame: true,
+            questionCount: DAILY_QUIZ_GAME_QUESTION_COUNT,
+            dispatch: !session.legacyCompleted
+        });
     }
     updateDailyQuizBanner();
 }
@@ -1401,8 +1843,11 @@ function updateResultActionButtons() {
     const retryWrap = document.getElementById('result-retry-wrap');
 
     if (sectionKey === VIRTUAL_SECTION_DAILY) {
-        if (retryWrap) retryWrap.hidden = score === TOTAL_QUESTIONS;
-        if (restartStageBtn) restartStageBtn.textContent = uiT('dailyQuizRetrySame');
+        const session = activeDailyQuizSession || readDailyQuizSession();
+        if (retryWrap) retryWrap.hidden = Boolean(session?.cleared);
+        if (restartStageBtn) {
+            restartStageBtn.textContent = uiT('dailyQuizRetrySame');
+        }
         backSameBtns.forEach((button) => { button.style.display = 'none'; });
         if (backAllBtn) {
             backAllBtn.style.display = '';
@@ -1806,6 +2251,7 @@ async function initializeQuizApp() {
         activeQuizData = buildQuizDataFromSectionArrays();
         rebuildPinyinCountMap();
         rebuildExamplePinyinMap();
+        await migrateDailyQuizSessionIfNeeded();
         if (!initializeQuizNavigationHistory()) return;
         initializeSectionSelection();
 
@@ -2893,7 +3339,7 @@ function takeRandomUniqueItems(source, count, usedKeySet) {
     const picked = [];
     const shuffled = shuffleArray([...source]);
     for (const item of shuffled) {
-        const key = getItemUniqueKey(item);
+        const key = getDailyQuizQuestionKey(item);
         if (usedKeySet.has(key)) continue;
         usedKeySet.add(key);
         picked.push(item);
@@ -2932,12 +3378,14 @@ async function prepareQuizSet() {
     const sectionKey = window.selectedQuizSection;
 
     let pool = [];
+    let dailySession = null;
     const keepQuestionOrder = sectionKey === VIRTUAL_SECTION_DAILY;
 
     if (sectionKey === VIRTUAL_SECTION_DAILY) {
         const session = activeDailyQuizSession || await getOrCreateDailyQuizSession();
         activeDailyQuizSession = session;
-        pool = session.questionKeys.map(findDailyQuizQuestion).filter(Boolean);
+        dailySession = session;
+        pool = session.currentGame.questionKeys.map(findDailyQuizQuestion).filter(Boolean);
     } else if (sectionKey === VIRTUAL_SECTION_WRONG) {
         pool = await dbGetAllByStage(STORE_WRONG, stage);
     } else if (sectionKey === VIRTUAL_SECTION_WORDBOOK) {
@@ -2956,9 +3404,12 @@ async function prepareQuizSet() {
     pool = pool.map(reconnectStoredQuizItem).filter(Boolean);
 
     // 각 문제에 options/correct 없으면 생성 (기존 buildQuizDataFromSectionArrays 로직 재사용)
-    // 섹션의 전체 문제를 섞은 뒤, 퀴즈 한 회당 최대 10문제만 출제합니다.
+    // 일반 섹션과 오늘의 퀴즈 모두 한 게임은 10문제입니다.
     if (!keepQuestionOrder) shuffleArray(pool);
-    const quizPool = sectionKey === VIRTUAL_SECTION_WORDBOOK ? pool : pool.slice(0, QUIZ_QUESTION_LIMIT);
+    const questionLimit = sectionKey === VIRTUAL_SECTION_DAILY
+        ? getDailyQuizSessionQuestionCount(dailySession)
+        : QUIZ_QUESTION_LIMIT;
+    const quizPool = sectionKey === VIRTUAL_SECTION_WORDBOOK ? pool : pool.slice(0, questionLimit);
 
     shuffledQuestions = quizPool.map(item => {
         if (Array.isArray(item.options) && item.options.length >= 2 && Number.isInteger(item.correct)) {
@@ -3355,6 +3806,7 @@ function loadQuiz() {
     timeLeft = TIME_PER_QUESTION;
 
     const currentQuiz = shuffledQuestions[currentIdx];
+    markDailyQuizQuestionShown(currentQuiz);
 
     currentHanzi = currentQuiz.reading || currentQuiz.hanzi;
     currentQuizItem = currentQuiz;
