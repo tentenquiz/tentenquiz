@@ -15,6 +15,7 @@
     const ABSURD_DAILY_QUIZ_DATE_COUNT = 100000;
     const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
     const MAX_TOTAL_RECORDS = 1000000;
+    const MAX_RECORD_NOTE_LENGTH = 2000;
     const STORE_DEFINITIONS = {
         wrongBank: [{ name: 'stage', keyPath: 'stage' }],
         myWordbook: [{ name: 'stage', keyPath: 'stage' }],
@@ -385,7 +386,10 @@
 
     function validateRecord(record) {
         return record && typeof record === 'object' && !Array.isArray(record)
-            && typeof record.id === 'string' && record.id.length > 0;
+            && typeof record.id === 'string' && record.id.length > 0
+            && (record.note === undefined || (
+                typeof record.note === 'string' && record.note.length <= MAX_RECORD_NOTE_LENGTH
+            ));
     }
 
     function validateBackupPayload(payload) {

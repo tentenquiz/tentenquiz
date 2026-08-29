@@ -55,8 +55,8 @@ const validPayload = {
     databases: [{
         name: 'tenTenQuizGlobalDB_ko_to_vi',
         stores: {
-            wrongBank: [{ id: 'wrong-1', stage: 1 }],
-            myWordbook: [{ id: 'word-1', stage: 1 }],
+            wrongBank: [{ id: 'wrong-1', stage: 1, note: '한국어 English 日本語 中文' }],
+            myWordbook: [{ id: 'word-1', stage: 1, note: '' }],
             learningProgress: [{ id: 'progress-1', stage: 1, section: 'nature_weather' }]
         }
     }]
@@ -91,6 +91,8 @@ expectInvalid((payload) => { payload.version = 99; }, 'unsupported version');
 expectInvalid((payload) => { payload.preferences.learningLanguage = 'ko'; }, 'matching language pair');
 expectInvalid((payload) => { payload.databases[0].name = 'untrusted-database'; }, 'untrusted database name');
 expectInvalid((payload) => { payload.databases[0].stores.wrongBank[0].id = ''; }, 'missing record id');
+expectInvalid((payload) => { payload.databases[0].stores.wrongBank[0].note = 123; }, 'non-string record note');
+expectInvalid((payload) => { payload.databases[0].stores.wrongBank[0].note = '가'.repeat(2001); }, 'oversized record note');
 expectInvalid((payload) => { payload.databases.push(payload.databases[0]); }, 'duplicate database');
 expectInvalid((payload) => { payload.dailyQuizAchievements[0].currentStreak = 6; }, 'streak greater than best record');
 expectInvalid((payload) => { payload.dailyQuizAchievements.push(payload.dailyQuizAchievements[0]); }, 'duplicate daily quiz achievement');
@@ -117,6 +119,7 @@ if (!source.includes("downloadPayload(currentPayload, 'tentenquiz-before-restore
 
 console.log('OK: 132 language-pair databases can be backed up in one validated file');
 console.log('OK: invalid, foreign, duplicate, and unsafe backups are rejected');
+console.log('OK: record notes preserve multilingual text and reject non-string or oversized values');
 console.log('OK: restore creates a safety backup before replacing current records');
 console.log('OK: encrypted backup validation and restore include daily streak achievements');
 console.log('OK: file/delete controls are absent and cloud recovery actions share one style');

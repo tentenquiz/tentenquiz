@@ -3957,7 +3957,7 @@ function getSentencePinyin(sentence) {
 
 function pinyinizeNote(note) {
     if (!note) return "";
-    return note;
+    return escapeHtmlWithLineBreaks(note);
 }
 
 function speakChinese(hanzi, section = '', audioFile = '') {

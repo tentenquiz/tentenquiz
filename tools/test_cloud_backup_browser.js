@@ -152,6 +152,56 @@ async function addProgress(page, id) {
     }, id);
 }
 
+async function verifyNoteTextRendering(page) {
+    const result = await page.evaluate(async () => {
+        window.__TENTEN_NOTE_XSS_TRIGGERED__ = false;
+        const notes = [
+            '한국어 메모',
+            'English note',
+            '日本語のメモ',
+            '中文笔记',
+            '<img src=x onerror="window.__TENTEN_NOTE_XSS_TRIGGERED__=true">',
+            '<svg onload="window.__TENTEN_NOTE_XSS_TRIGGERED__=true"></svg>',
+            '<script>window.__TENTEN_NOTE_XSS_TRIGGERED__=true</script>'
+        ];
+        const validated = window.TentenLearningRecords.validateBackupPayload({
+            format: 'tentenquiz-learning-records',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            preferences: { interfaceLanguage: 'ko', learningLanguage: 'vi', chineseReading: 'pinyin' },
+            dailyQuizAchievements: [],
+            databases: [{
+                name: 'tenTenQuizGlobalDB_ko_to_vi',
+                stores: {
+                    wrongBank: notes.map((note, index) => ({ id: `note-${index}`, stage: 1, note })),
+                    myWordbook: [],
+                    learningProgress: []
+                }
+            }]
+        });
+        const restoredNotes = validated.databases[0].stores.wrongBank.map((record) => record.note);
+        const rendered = restoredNotes.map((note) => {
+            const container = document.createElement('div');
+            container.innerHTML = `<div class="word-note-text">${pinyinizeNote(note)}</div>`;
+            document.body.appendChild(container);
+            return { note, container };
+        });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const checks = rendered.map(({ note, container }) => ({
+            sameText: container.textContent === note,
+            executableElementCount: container.querySelectorAll('img, svg, script').length
+        }));
+        rendered.forEach(({ container }) => container.remove());
+        return {
+            triggered: window.__TENTEN_NOTE_XSS_TRIGGERED__,
+            checks
+        };
+    });
+    if (result.triggered || result.checks.some((check) => !check.sameText || check.executableElementCount !== 0)) {
+        throw new Error(`note text rendering allowed executable HTML: ${JSON.stringify(result)}`);
+    }
+}
+
 async function learnSectionQuestions(page, stage, section, start, count) {
     await page.evaluate(async ({ stageValue, sectionValue, startIndex, questionCount }) => {
         const questions = getUniqueSectionQuestions(stageValue, sectionValue);
@@ -191,6 +241,7 @@ async function completeSectionMilestone(page, stage, section) {
         await configurePage(firstPage, endpoint);
         await firstPage.goto(`${origin}/?native=ko&learn=vi`, { waitUntil: 'domcontentloaded' });
         await firstPage.waitForSelector('#cloud-backup-section:not([hidden])');
+        await verifyNoteTextRendering(firstPage);
         await learnSectionQuestions(firstPage, 1, 'nature_weather', 0, 24);
 
         await firstPage.waitForTimeout(250);
@@ -431,6 +482,7 @@ async function completeSectionMilestone(page, stage, section) {
         console.log('OK: the mobile restore dialog and native alert leave no backdrop before navigation');
         console.log('OK: the original device rotates to a new code instead of reviving a consumed one');
         console.log('OK: cloud-backup deletion is not exposed in the learner UI');
+        console.log('OK: multilingual notes render as text and representative HTML payloads create no executable elements');
 
         await firstContext.close();
         await secondContext.close();
