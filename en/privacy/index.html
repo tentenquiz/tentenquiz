@@ -6,7 +6,7 @@
     <base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy policy | TentenQuiz</title>
-    <meta name="description" content="How TentenQuiz handles local learning records, encrypted backups, cookies, Google AdSense, inquiries, and children’s privacy.">
+    <meta name="description" content="How TentenQuiz handles local learning records, encrypted cloud backups, Google Analytics, security services, cookies, inquiries, and children’s privacy.">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#8F2D2D">
     <link rel="canonical" href="https://tentenquiz.com/en/privacy/">
@@ -49,12 +49,12 @@
     <meta property="og:image:alt" content="Privacy policy | TentenQuiz">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Privacy policy | TentenQuiz">
-    <meta name="twitter:description" content="How TentenQuiz handles local learning records, encrypted backups, cookies, Google AdSense, inquiries, and children’s privacy.">
+    <meta name="twitter:description" content="How TentenQuiz handles local learning records, encrypted cloud backups, Google Analytics, security services, cookies, inquiries, and children’s privacy.">
     <meta name="twitter:image" content="https://tentenquiz.com/assets/social/og-image-en.png?v=20260821-tenten10-1">
     <meta property="og:locale" content="en_US">
     <meta name="google" content="notranslate">
     <meta property="og:title" content="Privacy policy | TentenQuiz">
-    <meta property="og:description" content="How TentenQuiz handles local learning records, encrypted backups, cookies, Google AdSense, inquiries, and children’s privacy.">
+    <meta property="og:description" content="How TentenQuiz handles local learning records, encrypted cloud backups, Google Analytics, security services, cookies, inquiries, and children’s privacy.">
 </head>
 <body>
     <header class="legal-site-header">
@@ -71,23 +71,23 @@
         <article id="privacy-policy" class="legal-document" data-content-page="privacy" aria-labelledby="privacy-policy-title">
             <header>
                 <h1 id="privacy-policy-title">Privacy Policy</h1>
-                <p class="legal-effective-date">Effective: August 19, 2026</p>
+                <p class="legal-effective-date">Effective: August 30, 2026</p>
             </header>
             <p class="legal-intro">The TentenQuiz operator values privacy and works to follow applicable law and Google publisher policies. This policy explains how information is handled on the TentenQuiz website and related services.</p>
             
             <section>
                 <h2>1. Information handled</h2>
-                <p>No registration is required, and the service is not designed to directly collect your name, phone number, or address.</p><ul><li><strong>On-device data:</strong> language and reading settings, progress, wrong answers, and wordbook entries may be stored in local storage or IndexedDB.</li><li><strong>Milestone cloud backup:</strong> after you first complete 25 questions in a stage topic, current settings and records are encrypted in the browser and sent as ciphertext. The server may handle a random backup ID, ciphertext, time, size, and integrity value. The recovery code and unencrypted records are not sent.</li><li><strong>Automatically generated data:</strong> hosting, security, and advertising providers may process IP address, browser/device data, access time, activity, cookies, beacons, and advertising identifiers.</li><li><strong>Inquiry data:</strong> an email address and message are processed when you contact support.</li></ul>
+                <p>No registration is required, and the service is not designed to directly collect your name, phone number, or address.</p><ul><li><strong>On-device data:</strong> learning language, interface language, and Chinese reading settings may be stored in localStorage. Learning progress, wrong-answer records, and wordbook entries are stored in IndexedDB for each language pair. The daily-quiz session (selected words, current game, question order, exposure counts, correct, wrong and timed-out answers, and current position), daily-quiz achievements, recovery code, and backup state may also be stored in localStorage.</li><li><strong>Milestone cloud backup:</strong> when a backup condition is met, such as the first completion of a stage section or final completion of the daily quiz, language settings, learning progress, wrong-answer records, wordbook entries, and daily-quiz achievements may be backed up. Daily-quiz achievements may include the language pair, completion dates, current and best streaks, total clear days, latest completion time, and time zone. The backup is encrypted in your browser with AES-GCM before transmission and stored on the server as ciphertext. The daily-quiz session is not included in the backup and stays on that device. The server may process a random backup ID, ciphertext, storage time, data size, record count, and change or integrity values. The recovery code and unencrypted learning records are not sent.</li><li><strong>Analytics data:</strong> the main pages for all 12 languages may load Google Analytics 4 through Google Tag Manager. Page URL and title, access time, referrer, approximate location, browser and device information, and service-use information may be sent to Google. Google Analytics may use first-party cookies such as <code>_ga</code> or similar technologies.</li><li><strong>Hosting and security data:</strong> Cloudflare or Google may process IP address, request time, requested URL, browser and device information, network data, and security signals while serving the site and protecting cloud-backup requests.</li><li><strong>Inquiry data:</strong> an email address and message are processed when you contact support.</li></ul>
             </section>
 
             <section>
                 <h2>2. Purposes</h2>
-                <p>Information may be used to provide the service, retain settings, back up and restore learning records, fix errors, maintain security, answer inquiries, understand service use, serve ads, and measure advertising performance.</p>
+                <p>Information may be used to provide the service, retain settings, back up and restore learning records, fix errors, prevent abuse, maintain security, answer inquiries, and understand service use. If advertising is introduced later, it may also be used to serve ads and measure advertising performance.</p>
             </section>
 
             <section>
-                <h2>3. Cookies and Google AdSense</h2>
-                <p>The service may use cookies or similar storage for settings and improvement and may use Google AdSense for advertising. Google and other third-party vendors may use cookies to serve ads based on prior visits to TentenQuiz or other websites. Google’s advertising cookies allow Google and its partners to show personalised ads based on visits to this and other sites.</p><p>Manage personalised ads at <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google Ads Settings</a> or participating vendors at <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">AboutAds</a>. Learn how Google uses partner-site information at <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google’s partner-sites policy</a>.</p><p>Blocking cookies or browser storage may prevent language settings, progress, wrong answers, or wordbooks from being retained.</p>
+                <h2>3. Cookies, Google Analytics and Google AdSense</h2>
+                <p>The service uses browser storage technologies to retain settings and analyse usage. Google Analytics 4 may run through Google Tag Manager when a main page loads. The service currently has no separate consent banner or consent management platform (CMP).</p><p>Google AdSense advertising code is not currently installed. If Google AdSense is used later, Google and other third-party vendors may use cookies to serve ads based on prior visits to TentenQuiz or other websites. Google’s advertising cookies may allow Google and its partners to show personalised ads based on visits to this and other sites.</p><p>Manage personalised ads at <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google Ads Settings</a> or participating vendors at <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">AboutAds</a>. Learn how Google uses partner-site information at <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google’s partner-sites policy</a>.</p><p>Blocking cookies or browser storage may prevent language settings, progress, wrong answers, wordbooks, daily-quiz progress, or backup state from being retained.</p>
             </section>
 
             <section>
@@ -97,7 +97,7 @@
 
             <section>
                 <h2>5. External services and international processing</h2>
-                <p>Google Firebase and other providers may support hosting, security, performance, advertising, and encrypted backup. Ciphertext, cookie identifiers, IP address, device/browser data, and access or ad interactions may be processed on servers outside your country under provider policies and law.</p><p>Where consent is required in the EEA, United Kingdom, Switzerland, or other regions, choices are provided through a consent management platform in line with applicable rules and Google policy.</p>
+                <ul><li><strong>Google Tag Manager and Google Analytics 4:</strong> manage analytics tags and analyse service usage.</li><li><strong>Google Firebase and Firestore:</strong> store and process ciphertext and backup metadata for the milestone-based encrypted cloud backup.</li><li><strong>Firebase App Check and reCAPTCHA Enterprise:</strong> verify that cloud-backup requests come from the genuine app and reduce automated abuse. Google may process IP address, browser and device information, request and security signals, App Check or reCAPTCHA tokens, and related cookies such as <code>_GRECAPTCHA</code>. This security process is not implemented to read plaintext learning records.</li><li><strong>Cloudflare Pages and Cloudflare R2:</strong> Pages serves the static web app, learning-data files, and other site resources; R2 serves pronunciation audio. Cloudflare may process IP address, request time, requested URL, browser and device information, and ordinary network data.</li></ul><p>Information may be processed on servers outside your country. Details and retention follow each provider’s privacy policy and applicable law.</p><p>The service currently has no separate CMP. Before serving ads in the EEA, United Kingdom, Switzerland, or another region where law or Google policy requires consent, an appropriate consent process will be implemented.</p>
             </section>
 
             <section>
@@ -107,12 +107,12 @@
 
             <section>
                 <h2>7. Your choices and rights</h2>
-                <p>You can view or delete on-device data through browser or service controls, manage encrypted backups with a recovery code, and change cookie and personalised-ad settings. Because backups are not linked to a member account, only a person with the recovery code can restore or delete one. Contact us to request access, correction, or deletion of inquiry data held by the operator.</p>
+                <p>You can view or delete on-device data through browser or service controls and manage encrypted backups with a recovery code. Browser settings can restrict analytics cookies and browser storage, and personalised ads can be managed in <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>. Because backups are not linked to a member account, only a person with the recovery code can restore or delete one. Contact us to request access, correction, or deletion of inquiry data held by the operator.</p>
             </section>
 
             <section>
                 <h2>8. Security</h2>
-                <p>Reasonable measures include protected transmission, browser-side encryption, hard-to-guess recovery codes, and database access rules. No Internet transmission or electronic storage method can be guaranteed absolutely secure.</p>
+                <p>Reasonable measures include protected transmission, AES-GCM encryption performed in the browser before cloud transmission, hard-to-guess recovery codes, and database access rules. This does not mean that every item in localStorage and IndexedDB is separately encrypted on the device. No Internet transmission or electronic storage method can be guaranteed absolutely secure.</p>
             </section>
 
             <section>

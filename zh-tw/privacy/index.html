@@ -6,7 +6,7 @@
     <base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>隱私權政策 | TentenQuiz</title>
-    <meta name="description" content="說明TentenQuiz如何處理裝置內學習記錄、加密備份、Cookie、Google AdSense、聯絡與兒童隱私。">
+    <meta name="description" content="說明TentenQuiz如何處理裝置內學習記錄、加密雲端備份、Google Analytics、安全服務、Cookie、聯絡與兒童隱私。">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#8F2D2D">
     <link rel="canonical" href="https://tentenquiz.com/zh-tw/privacy/">
@@ -49,12 +49,12 @@
     <meta property="og:image:alt" content="隱私權政策 | TentenQuiz">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="隱私權政策 | TentenQuiz">
-    <meta name="twitter:description" content="說明TentenQuiz如何處理裝置內學習記錄、加密備份、Cookie、Google AdSense、聯絡與兒童隱私。">
+    <meta name="twitter:description" content="說明TentenQuiz如何處理裝置內學習記錄、加密雲端備份、Google Analytics、安全服務、Cookie、聯絡與兒童隱私。">
     <meta name="twitter:image" content="https://tentenquiz.com/assets/social/og-image-zh-tw.png?v=20260821-tenten10-1">
     <meta property="og:locale" content="zh_TW">
     <meta name="google" content="notranslate">
     <meta property="og:title" content="隱私權政策 | TentenQuiz">
-    <meta property="og:description" content="說明TentenQuiz如何處理裝置內學習記錄、加密備份、Cookie、Google AdSense、聯絡與兒童隱私。">
+    <meta property="og:description" content="說明TentenQuiz如何處理裝置內學習記錄、加密雲端備份、Google Analytics、安全服務、Cookie、聯絡與兒童隱私。">
 </head>
 <body>
     <header class="legal-site-header">
@@ -71,23 +71,23 @@
         <article id="privacy-policy" class="legal-document" data-content-page="privacy" aria-labelledby="privacy-policy-title">
             <header>
                 <h1 id="privacy-policy-title">隱私權政策</h1>
-                <p class="legal-effective-date">生效日：2026年8月19日</p>
+                <p class="legal-effective-date">生效日：2026年8月30日</p>
             </header>
             <p class="legal-intro">TentenQuiz營運者重視使用者隱私，並努力遵守適用法律與Google發布商政策。本政策說明網站及相關服務如何處理資訊。</p>
             
             <section>
                 <h2>1. 處理的資訊</h2>
-                <p>無須註冊，服務並非設計來直接蒐集姓名、電話或地址。</p><ul><li><strong>裝置內資料：</strong>語言與讀音設定、進度、錯題及單字本可儲存在Local Storage或IndexedDB。</li><li><strong>學習成果雲端備份：</strong>首次完成某階段主題25題後，設定與記錄會在瀏覽器加密，再以密文傳送。伺服器可能處理隨機備份ID、密文、時間、大小與完整性值。復原碼與未加密記錄不會傳送。</li><li><strong>自動產生資料：</strong>主機、安全或廣告服務商可能處理IP、裝置/瀏覽器、時間、使用記錄、Cookie、信標與廣告識別碼。</li><li><strong>聯絡資料：</strong>寄送郵件時會處理電子郵件地址與內容。</li></ul>
+                <p>無須註冊，服務並非設計來直接蒐集姓名、電話或地址。</p><ul><li><strong>裝置內資料：</strong>學習語言、介面語言與中文讀音設定可儲存在localStorage。學習進度、錯題記錄與單字本依語言組合儲存在IndexedDB。今日測驗的進行工作階段（選定單字、目前遊戲、題目順序、出現次數、答對、答錯與逾時結果及目前位置）、達成記錄、復原碼與備份狀態也可能儲存在localStorage。</li><li><strong>學習成果雲端備份：</strong>首次完成階段小節或最終完成今日測驗等備份條件滿足時，語言設定、學習進度、錯題記錄、單字本與今日測驗達成記錄可能納入備份。達成記錄可能包含語言組合、完成日期、目前與最高連續天數、總達成天數、最近完成時間與時區。備份在傳送前於瀏覽器中以AES-GCM加密，並以密文儲存在伺服器。今日測驗的進行工作階段不包含在備份中，只保留於該裝置。伺服器可能處理隨機備份ID、密文、儲存時間、資料大小、記錄數，以及變更或完整性檢查值。復原碼與未加密的學習記錄不會傳送。</li><li><strong>分析資料：</strong>12種語言的首頁可能透過Google Tag Manager載入Google Analytics 4。頁面網址與標題、存取時間、來源頁面、大致地區、瀏覽器與裝置資訊及服務使用資訊可能傳送給Google。Google Analytics可能使用<code>_ga</code>等第一方Cookie或類似技術。</li><li><strong>主機與安全資料：</strong>在提供網站及保護雲端備份請求時，Cloudflare或Google可能處理IP位址、請求時間、請求網址、瀏覽器與裝置資訊、網路資料及安全信號。</li><li><strong>聯絡資料：</strong>寄送郵件時會處理電子郵件地址與內容。</li></ul>
             </section>
 
             <section>
                 <h2>2. 使用目的</h2>
-                <p>資訊可能用於提供服務、保留設定、備份與復原、排除錯誤、維護安全、回覆聯絡、了解使用情況、投放廣告及衡量成效。</p>
+                <p>資訊可能用於提供服務、保留設定、備份與復原學習記錄、排除錯誤、防止濫用、維護安全、回覆聯絡及分析服務使用情況。日後若導入廣告，也可能用於廣告投放及成效衡量。</p>
             </section>
 
             <section>
-                <h2>3. Cookie與Google AdSense</h2>
-                <p>服務可能為保留設定與改善而使用Cookie等技術，並使用Google AdSense投放廣告。Google等第三方供應商可使用Cookie，依使用者先前造訪TentenQuiz或其他網站的情況投放廣告。Google及合作夥伴可依對本網站與其他網站的造訪提供個人化廣告。</p><p>可在<a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google廣告設定</a>或<a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">AboutAds</a>管理。Google如何使用合作夥伴網站資訊請看<a href="https://policies.google.com/technologies/partner-sites?hl=zh-TW" target="_blank" rel="noopener noreferrer">Google說明</a>。</p><p>限制Cookie或瀏覽器儲存可能使設定、進度、錯題或單字本無法保留。</p>
+                <h2>3. Cookie、Google Analytics與Google AdSense</h2>
+                <p>服務使用瀏覽器儲存技術來保留設定與分析使用情況。首頁載入時，Google Analytics 4可能透過Google Tag Manager執行。目前服務沒有獨立的同意橫幅或同意管理平台（CMP）。</p><p>目前尚未安裝Google AdSense廣告程式碼。日後若使用Google AdSense，Google等第三方供應商可能使用Cookie，依使用者先前造訪TentenQuiz或其他網站的情況投放廣告。Google及合作夥伴可能依對本網站與其他網站的造訪提供個人化廣告。</p><p>可在<a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google廣告設定</a>或<a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">AboutAds</a>管理。Google如何使用合作夥伴網站資訊請看<a href="https://policies.google.com/technologies/partner-sites?hl=zh-TW" target="_blank" rel="noopener noreferrer">Google說明</a>。</p><p>限制Cookie或瀏覽器儲存可能使語言設定、學習進度、錯題記錄、單字本、今日測驗進度或備份狀態無法保留。</p>
             </section>
 
             <section>
@@ -97,7 +97,7 @@
 
             <section>
                 <h2>5. 外部服務與境外處理</h2>
-                <p>Google Firebase等外部服務可能用於廣告、主機、安全、效能與加密備份。密文、Cookie識別碼、IP、裝置/瀏覽器與存取或廣告互動資訊可能在境外伺服器處理。</p><p>在歐洲經濟區、英國、瑞士等需要同意的地區，會依適用規則與Google政策透過同意管理平台提供選擇。</p>
+                <ul><li><strong>Google Tag Manager與Google Analytics 4：</strong>用於管理分析標籤及分析服務使用情況。</li><li><strong>Google Firebase與Firestore：</strong>用於儲存及處理達成學習成果時產生的加密雲端備份密文與備份中繼資料。</li><li><strong>Firebase App Check與reCAPTCHA Enterprise：</strong>用於確認雲端備份請求來自正版應用程式並減少自動化濫用。Google可能處理IP位址、瀏覽器與裝置資訊、請求及安全信號、App Check或reCAPTCHA權杖，以及<code>_GRECAPTCHA</code>等相關Cookie。此安全流程並非為讀取明文學習記錄而實作。</li><li><strong>Cloudflare Pages與Cloudflare R2：</strong>Pages提供靜態網頁應用程式、學習資料檔案及其他網站資源，R2提供發音音訊。Cloudflare可能處理IP位址、請求時間、請求網址、瀏覽器與裝置資訊及一般網路資料。</li></ul><p>資訊可能在使用者所在國家或地區以外的伺服器處理，詳細方式與保存期間依各供應商的隱私政策及適用法律。</p><p>目前服務沒有獨立的CMP。在歐洲經濟區、英國、瑞士或其他法律或Google政策要求同意的地區投放廣告前，將實施符合要求的同意流程。</p>
             </section>
 
             <section>
@@ -107,12 +107,12 @@
 
             <section>
                 <h2>7. 使用者選擇與權利</h2>
-                <p>可透過瀏覽器或服務查看、刪除裝置資料，用復原碼復原或刪除加密備份，並調整Cookie與個人化廣告設定。備份不連結會員帳號，只有復原碼持有人可操作。可用電子郵件要求查閱、更正或刪除營運者持有的聯絡資訊。</p>
+                <p>可透過瀏覽器或服務查看、刪除裝置資料，並用復原碼管理加密備份。可透過瀏覽器設定限制分析Cookie與瀏覽器儲存，個人化廣告可在<a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer">Google廣告設定</a>管理。備份不連結會員帳號，只有復原碼持有人可復原或刪除。可用電子郵件要求查閱、更正或刪除營運者持有的聯絡資訊。</p>
             </section>
 
             <section>
                 <h2>8. 安全措施</h2>
-                <p>採取傳輸保護、瀏覽器端加密、難以猜測的復原碼與資料庫存取規則等合理措施，但無法保證網路傳輸或電子儲存絕對安全。</p>
+                <p>合理措施包括傳輸保護、雲端傳送前在瀏覽器中進行AES-GCM備份加密、難以猜測的復原碼與資料庫存取規則。這不表示裝置中localStorage與IndexedDB的每項資料都分別加密。無法保證網路傳輸或電子儲存絕對安全。</p>
             </section>
 
             <section>

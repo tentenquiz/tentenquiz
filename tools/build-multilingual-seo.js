@@ -318,11 +318,13 @@ function normalizeAdsenseClient(value) {
 }
 
 function injectAdsense(html, adsenseClient) {
-    // 재실행 시 중복 주입을 막기 위해 기존 태그를 먼저 제거합니다.
+    // 광고 로더는 설정된 게시자 ID가 있을 때만 주입합니다. 심사용 소유권
+    // 확인 meta는 원본 HTML에 둘 수 있으므로 로더가 비어 있으면 보존합니다.
     html = html.replace(/\s*<script\b[^>]*data-tenten-adsense[^>]*>[\s\S]*?<\/script>\s*/gi, '\n');
-    html = html.replace(/\s*<meta\b[^>]*name=["']google-adsense-account["'][^>]*>\s*/gi, '\n');
     if (!adsenseClient) return html;
 
+    // 로더를 활성화할 때는 기존 소유권 meta를 교체해 중복을 막습니다.
+    html = html.replace(/\s*<meta\b[^>]*name=["']google-adsense-account["'][^>]*>\s*/gi, '\n');
     const tags = `    <meta name="google-adsense-account" content="${escapeHtml(adsenseClient)}">\n`
         + `    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsenseClient)}"\n`
         + `            crossorigin="anonymous" data-tenten-adsense></script>\n`;
