@@ -141,7 +141,7 @@
                 return;
             }
             const fileName = String(element.getAttribute('href') || '').split(/[?#]/)[0];
-            const targetPage = fileName === 'index.html' ? 'home' : fileToPage[fileName];
+            const targetPage = fileName === 'index.html' || fileName === '/' ? 'home' : fileToPage[fileName];
             if (targetPage && common[targetPage]) element.textContent = common[targetPage];
         });
 

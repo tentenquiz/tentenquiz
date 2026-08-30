@@ -260,7 +260,7 @@ function localizeContentChrome(html, common, currentPageKey) {
         let nextOpening = setAttribute(opening, 'aria-label', common.navigationLabel);
         let nextBody = body.replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi, (anchor, href) => {
             const fileName = href.split(/[?#]/)[0].split('/').pop();
-            const pageKey = fileName === 'index.html' ? 'home' : fileName.replace(/\.html$/i, '');
+            const pageKey = fileName === 'index.html' || fileName === '' ? 'home' : fileName.replace(/\.html$/i, '');
             return common[pageKey]
                 ? anchor.replace(/>[\s\S]*<\/a>$/, `>${escapeHtml(common[pageKey])}</a>`)
                 : anchor;
@@ -275,14 +275,14 @@ function localizeContentChrome(html, common, currentPageKey) {
 }
 
 function rewriteLocalizedLinks(html, locale) {
-    const knownPages = new Set(['index.html', 'about.html', 'guide.html', 'contact.html', 'privacy.html', 'terms.html']);
+    const knownPages = new Set(['index.html', 'about.html', 'guide.html', 'contact.html', 'privacy.html', 'terms.html', '', 'about', 'guide', 'contact', 'privacy', 'terms']);
     return html.replace(/<a\b[^>]*href=["'][^"']+["'][^>]*>/gi, (tag) => {
         const href = getAttribute(tag, 'href');
         if (!href || /^(?:https?:|mailto:|tel:|data:|#)/i.test(href)) return tag;
         const cleanPath = href.split(/[?#]/)[0].replace(/^\.\//, '');
         const fileName = cleanPath.split('/').pop();
         if (!knownPages.has(fileName)) return tag;
-        const pageKey = fileName === 'index.html' ? 'home' : fileName.replace(/\.html$/i, '');
+        const pageKey = fileName === 'index.html' || fileName === '' ? 'home' : fileName.replace(/\.html$/i, '');
         return setAttribute(tag, 'href', localizedPath(locale, pageKey));
     });
 }
