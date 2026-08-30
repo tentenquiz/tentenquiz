@@ -509,6 +509,7 @@ body > canvas {
     line-height: 1.32;
     letter-spacing: 0;
     word-break: keep-all;
+    overflow-wrap: anywhere;
 
     cursor: pointer;
 
