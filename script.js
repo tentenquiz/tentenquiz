@@ -1593,6 +1593,24 @@ function getDailyQuizRemainingWordCount(session) {
     );
 }
 
+function renderDailyQuizStartSubtitle(subtitle) {
+    const text = uiT('dailyQuizSubtitle');
+    const wordCount = String(DAILY_QUIZ_WORD_COUNT);
+    const countIndex = text.indexOf(wordCount);
+    if (countIndex < 0) {
+        subtitle.textContent = text;
+        return;
+    }
+    const emphasizedCount = document.createElement('strong');
+    emphasizedCount.className = 'daily-quiz-word-count';
+    emphasizedCount.textContent = wordCount;
+    subtitle.replaceChildren(
+        text.slice(0, countIndex),
+        emphasizedCount,
+        text.slice(countIndex + wordCount.length)
+    );
+}
+
 function updateDailyQuizBanner() {
     const button = document.getElementById('daily-quiz-banner');
     const status = document.getElementById('daily-quiz-status');
@@ -1628,11 +1646,7 @@ function updateDailyQuizBanner() {
         if (session.all12Exposed) {
             button.classList.add('is-perfect-target');
             status.textContent = uiT('dailyQuizRetryAction');
-            subtitle.textContent = uiT('dailyQuizAllWordsTitle');
-            if (detail) {
-                detail.textContent = uiT('dailyQuizPerfectPrompt');
-                detail.hidden = false;
-            }
+            subtitle.textContent = uiT('dailyQuizPerfectPrompt');
         } else {
             button.classList.add('is-learning');
             const remaining = getDailyQuizRemainingWordCount(session);
@@ -1645,13 +1659,13 @@ function updateDailyQuizBanner() {
             current: Math.min(questionCount, session.currentGame.results.length + 1),
             total: questionCount
         });
-        subtitle.textContent = uiT('dailyQuizSubtitle');
+        renderDailyQuizStartSubtitle(subtitle);
     } else {
         const target = getNextDailyQuizStreakTarget(achievement);
         status.textContent = target === 1
             ? uiT('dailyQuizFirstChallenge')
             : uiT('dailyQuizNextStreakChallenge', { count: target });
-        subtitle.textContent = uiT('dailyQuizSubtitle');
+        renderDailyQuizStartSubtitle(subtitle);
     }
     button.setAttribute('aria-label', `${uiT('dailyQuizTitle')} · ${status.textContent}`);
     startDailyQuizBannerCelebration(button, Boolean(session?.cleared));
@@ -1843,11 +1857,7 @@ function updateResultActionButtons() {
     const retryWrap = document.getElementById('result-retry-wrap');
 
     if (sectionKey === VIRTUAL_SECTION_DAILY) {
-        const session = activeDailyQuizSession || readDailyQuizSession();
-        if (retryWrap) retryWrap.hidden = Boolean(session?.cleared);
-        if (restartStageBtn) {
-            restartStageBtn.textContent = uiT('dailyQuizRetrySame');
-        }
+        if (retryWrap) retryWrap.hidden = true;
         backSameBtns.forEach((button) => { button.style.display = 'none'; });
         if (backAllBtn) {
             backAllBtn.style.display = '';

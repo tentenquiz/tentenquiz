@@ -151,6 +151,8 @@ async function getDailyStorage(page) {
                 const daily = document.getElementById('daily-quiz-banner');
                 const stage = document.querySelector('.stage-select-btn');
                 const status = document.getElementById('daily-quiz-status');
+                const subtitle = document.getElementById('daily-quiz-subtitle');
+                const wordCount = subtitle.querySelector('.daily-quiz-word-count');
                 const copy = daily.querySelector('.daily-quiz-copy');
                 const title = daily.querySelector('.daily-quiz-copy strong');
                 const dailyRect = daily.getBoundingClientRect();
@@ -169,6 +171,12 @@ async function getDailyStorage(page) {
                     titleColor: getComputedStyle(title).color,
                     statusBackground: statusCss.backgroundImage,
                     statusText: status.textContent.trim(),
+                    subtitleText: subtitle.textContent.trim(),
+                    wordCountText: wordCount?.textContent || '',
+                    wordCountColor: wordCount ? getComputedStyle(wordCount).color : '',
+                    wordCountFontSize: wordCount ? Number.parseFloat(getComputedStyle(wordCount).fontSize) : 0,
+                    subtitleFontSize: Number.parseFloat(getComputedStyle(subtitle).fontSize),
+                    wordCountWeight: wordCount ? Number(getComputedStyle(wordCount).fontWeight) : 0,
                     statusWidth: statusRect.width,
                     statusMinWidth: statusCss.minWidth,
                     statusWhiteSpace: statusCss.whiteSpace,
@@ -199,6 +207,11 @@ async function getDailyStorage(page) {
                 cardStyle.titleColor !== 'rgb(37, 104, 77)' ||
                 !cardStyle.statusBackground.includes('rgb(91, 163, 130)') ||
                 cardStyle.statusText !== '시작하기' ||
+                cardStyle.subtitleText !== '오늘의 단어 12개에 도전하세요!' ||
+                cardStyle.wordCountText !== '12' ||
+                cardStyle.wordCountColor !== 'rgb(35, 101, 58)' ||
+                cardStyle.wordCountWeight < 900 ||
+                cardStyle.wordCountFontSize !== cardStyle.subtitleFontSize ||
                 cardStyle.stateClasses.length !== 0 ||
                 cardStyle.statusWidth < 78 ||
                 cardStyle.statusMinWidth !== '78px' ||
@@ -249,8 +262,8 @@ async function getDailyStorage(page) {
                         {
                             state: 'all-words',
                             title: window.tentenT('dailyQuizTitle'),
-                            subtitle: window.tentenT('dailyQuizAllWordsTitle'),
-                            detail: window.tentenT('dailyQuizPerfectPrompt'),
+                            subtitle: window.tentenT('dailyQuizPerfectPrompt'),
+                            detail: '',
                             status: window.tentenT('dailyQuizRetryAction')
                         },
                         {
@@ -265,7 +278,11 @@ async function getDailyStorage(page) {
                         daily.classList.toggle('is-learning', content.state === 'remaining');
                         daily.classList.toggle('is-perfect-target', content.state === 'all-words');
                         title.textContent = content.title;
-                        subtitle.textContent = content.subtitle;
+                        if (content.state === 'start') {
+                            renderDailyQuizStartSubtitle(subtitle);
+                        } else {
+                            subtitle.textContent = content.subtitle;
+                        }
                         detail.textContent = content.detail || '';
                         detail.hidden = !content.detail;
                         status.textContent = content.status;
@@ -275,6 +292,7 @@ async function getDailyStorage(page) {
                         const subtitleRect = subtitle.getBoundingClientRect();
                         const detailRect = detail.getBoundingClientRect();
                         const statusRect = status.getBoundingClientRect();
+                        const wordCount = subtitle.querySelector('.daily-quiz-word-count');
                         const sameRow = statusRect.top < copyRect.bottom && statusRect.bottom > copyRect.top;
                         return {
                             language,
@@ -287,6 +305,11 @@ async function getDailyStorage(page) {
                             titleDescriptionGap: subtitleRect.top - titleRect.bottom,
                             descriptionDetailGap: detail.hidden ? 0 : detailRect.top - subtitleRect.bottom,
                             subtitleWeight: Number(getComputedStyle(subtitle).fontWeight),
+                            subtitleFontSize: Number.parseFloat(getComputedStyle(subtitle).fontSize),
+                            wordCountText: wordCount?.textContent || '',
+                            wordCountWeight: wordCount ? Number(getComputedStyle(wordCount).fontWeight) : 0,
+                            wordCountFontSize: wordCount ? Number.parseFloat(getComputedStyle(wordCount).fontSize) : 0,
+                            wordCountColor: wordCount ? getComputedStyle(wordCount).color : '',
                             detailWeight: detail.hidden ? 0 : Number(getComputedStyle(detail).fontWeight),
                             subtitleColor: getComputedStyle(subtitle).color,
                             detailColor: detail.hidden ? '' : getComputedStyle(detail).color,
@@ -305,9 +328,14 @@ async function getDailyStorage(page) {
                 layout.statusOverflowX > 1 ||
                 layout.detailOverflowX > 1 ||
                 Math.abs(layout.titleDescriptionGap - 6) > 1 ||
-                (layout.state === 'all-words' && (layout.descriptionDetailGap < 0 || layout.descriptionDetailGap > 3)) ||
+                (layout.state === 'start' && (
+                    layout.wordCountText !== '12'
+                    || layout.wordCountWeight < 900
+                    || layout.wordCountFontSize !== layout.subtitleFontSize
+                    || layout.wordCountColor !== 'rgb(35, 101, 58)'
+                )) ||
                 (layout.state === 'remaining' && (layout.subtitleWeight < 800 || layout.subtitleColor !== 'rgb(53, 107, 86)')) ||
-                (layout.state === 'all-words' && (layout.detailWeight < 900 || layout.detailColor !== 'rgb(35, 101, 58)')) ||
+                (layout.state === 'all-words' && (layout.subtitleWeight < 900 || layout.subtitleFontSize < 14 || layout.subtitleColor !== 'rgb(35, 101, 58)')) ||
                 (viewport.width > 340
                     ? (!layout.sameRow || layout.horizontalGap < 9 || Math.abs(layout.statusCenterOffset) > 1 || layout.statusRightInset < 11 || layout.statusRightInset > 18)
                     : (layout.sameRow || layout.verticalGap < 5))
@@ -321,7 +349,7 @@ async function getDailyStorage(page) {
                 const daily = document.getElementById('daily-quiz-banner');
                 daily.classList.remove('is-cleared', 'is-learning', 'is-perfect-target');
                 daily.querySelector('.daily-quiz-copy strong').textContent = window.tentenT('dailyQuizTitle');
-                document.getElementById('daily-quiz-subtitle').textContent = window.tentenT('dailyQuizSubtitle');
+                renderDailyQuizStartSubtitle(document.getElementById('daily-quiz-subtitle'));
                 const detail = document.getElementById('daily-quiz-detail');
                 detail.textContent = '';
                 detail.hidden = true;
@@ -335,6 +363,7 @@ async function getDailyStorage(page) {
             return {
                 language,
                 progress: window.tentenT('questionProgress', { current: 10, total: 10 }),
+                startSubtitle: window.tentenT('dailyQuizSubtitle'),
                 learningTitle: window.tentenT('dailyQuizLearningTitle'),
                 remaining: window.tentenT('dailyQuizWordsRemaining', { count: 2 }),
                 allWords: window.tentenT('dailyQuizAllWordsTitle'),
@@ -346,6 +375,7 @@ async function getDailyStorage(page) {
         }), languageCodes);
         const invalidLocalizedMessage = localizedMessages.find((entry) => (
             !entry.progress.includes('10')
+            || !entry.startSubtitle.includes('12')
             || !entry.remaining.includes('2')
             || !entry.allWords.includes('12')
             || !entry.perfectPrompt
@@ -382,6 +412,7 @@ async function getDailyStorage(page) {
             updateResultActionButtons();
             const normalRetryText = document.getElementById('restart-stage-btn').textContent.trim();
             const normalRetryExpected = window.tentenT('retryStage');
+            const normalRetryHidden = document.getElementById('result-retry-wrap').hidden;
             window.selectedQuizCategory = previousCategory;
             window.selectedQuizSection = previousSection;
             updateResultActionButtons();
@@ -392,7 +423,8 @@ async function getDailyStorage(page) {
                 fallbackPriority,
                 normalTotal,
                 normalRetryText,
-                normalRetryExpected
+                normalRetryExpected,
+                normalRetryHidden
             };
         });
         if (
@@ -411,6 +443,7 @@ async function getDailyStorage(page) {
         if (
             algorithmBaseline.normalTotal !== 10
             || algorithmBaseline.normalRetryText !== algorithmBaseline.normalRetryExpected
+            || algorithmBaseline.normalRetryHidden
         ) {
             throw new Error(`normal stage quiz or retry action changed: ${JSON.stringify(algorithmBaseline)}`);
         }
@@ -668,13 +701,15 @@ async function getDailyStorage(page) {
         }
         if (
             await page.locator('#daily-quiz-result-guidance').count() !== 0
-            || (await page.locator('#restart-stage-btn').innerText()).trim() !== '다시 도전하기'
+            || !(await page.locator('#result-retry-wrap').isHidden())
         ) {
-            throw new Error('first-game result must omit daily progress guidance and show the daily retry action');
+            throw new Error('first-game result must omit daily progress guidance and the daily retry action');
         }
 
         await page.evaluate(() => { window.__dailyTestOnline = false; });
-        await page.click('#restart-stage-btn');
+        await page.click('#result-back-all-btn');
+        await page.waitForSelector('#daily-quiz-banner:not([hidden])');
+        await page.click('#daily-quiz-banner');
         await page.waitForFunction(() => document.getElementById('progress-text').textContent.includes('1 / 10'));
         const edgeSecondSession = (await getDailyStorage(page)).session;
         const edgeSecondGame = edgeSecondSession.currentGame.questionKeys;
@@ -694,7 +729,9 @@ async function getDailyStorage(page) {
             throw new Error(`pre-exposure 10/10 was reused after all 12 words were exposed: ${JSON.stringify(edgeSession)}`);
         }
 
-        await page.click('#restart-stage-btn');
+        await page.click('#result-back-all-btn');
+        await page.waitForSelector('#daily-quiz-banner:not([hidden])');
+        await page.click('#daily-quiz-banner');
         await page.waitForFunction(() => document.getElementById('progress-text').textContent.includes('1 / 10'));
         edgeSession = (await getDailyStorage(page)).session;
         if (!edgeSession.currentGame.allWordsExposedAtStart) {
@@ -757,9 +794,15 @@ async function getDailyStorage(page) {
         }
         if (
             await page.locator('#daily-quiz-result-guidance').count() !== 0
-            || (await page.locator('#restart-stage-btn').innerText()).trim() !== '다시 도전하기'
+            || !(await page.locator('#result-retry-wrap').isHidden())
+            || !(await page.locator('#wrong-answers-container').isVisible())
+            || !(await page.locator('#correct-answers-container').isVisible())
+            || !(await page.locator('#share-result-btn').isVisible())
+            || !(await page.locator('#share-notes-btn').isVisible())
+            || !(await page.locator('#result-back-all-btn').isVisible())
+            || await page.getByRole('button', { name: /단어장에 추가|단어장에서 빼기/ }).count() !== 10
         ) {
-            throw new Error('9/10 result must focus on the finished game and show the daily retry action');
+            throw new Error('9/10 result must focus on the finished game without the daily retry action');
         }
 
         await page.click('#result-back-all-btn');
@@ -801,37 +844,40 @@ async function getDailyStorage(page) {
         }
         if (
             await page.locator('#daily-quiz-result-guidance').count() !== 0
-            || (await page.locator('#restart-stage-btn').innerText()).trim() !== '다시 도전하기'
+            || !(await page.locator('#result-retry-wrap').isHidden())
         ) {
-            throw new Error('all-words/no-perfect result must omit daily progress guidance and show the daily retry action');
+            throw new Error('all-words/no-perfect result must omit daily progress guidance and the daily retry action');
         }
 
         for (const viewport of [{ width: 320, height: 700 }, { width: 1280, height: 900 }]) {
             await page.setViewportSize(viewport);
             const resultLayouts = await page.evaluate((languages) => {
-                const retry = document.getElementById('restart-stage-btn');
+                const retryWrap = document.getElementById('result-retry-wrap');
+                const backAll = document.getElementById('result-back-all-btn');
                 return languages.map((language) => {
                     window.tentenGlobal.interfaceLanguage = language;
                     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
                     updateResultActionButtons();
-                    const retryRect = retry.getBoundingClientRect();
+                    const backRect = backAll.getBoundingClientRect();
                     return {
                         language,
-                        text: retry.textContent.trim(),
-                        expected: window.tentenT('dailyQuizRetrySame'),
-                        retryOverflow: retry.scrollWidth - retry.clientWidth,
-                        retryViewportOverflow: Math.max(0, retryRect.right - innerWidth, -retryRect.left)
+                        retryHidden: retryWrap.hidden,
+                        backText: backAll.textContent.trim(),
+                        backExpected: window.tentenT('backToStages'),
+                        backOverflow: backAll.scrollWidth - backAll.clientWidth,
+                        backViewportOverflow: Math.max(0, backRect.right - innerWidth, -backRect.left)
                     };
                 });
             }, languageCodes);
             const layoutFailure = resultLayouts.find((layout) => (
-                !layout.text
-                || layout.text !== layout.expected
-                || layout.retryOverflow > 1
-                || layout.retryViewportOverflow > 1
+                !layout.retryHidden
+                || !layout.backText
+                || layout.backText !== layout.backExpected
+                || layout.backOverflow > 1
+                || layout.backViewportOverflow > 1
             ));
             if (layoutFailure) {
-                throw new Error(`localized daily retry action overflow at ${viewport.width}px: ${JSON.stringify(layoutFailure)}`);
+                throw new Error(`localized daily result actions failed at ${viewport.width}px: ${JSON.stringify(layoutFailure)}`);
             }
         }
         await page.evaluate(() => {
@@ -844,8 +890,8 @@ async function getDailyStorage(page) {
         await page.click('#result-back-all-btn');
         await page.waitForSelector('#daily-quiz-banner:not([hidden])');
         if (
-            (await page.locator('#daily-quiz-subtitle').innerText()).trim() !== '오늘의 12단어를 모두 만났어요!'
-            || (await page.locator('#daily-quiz-detail').innerText()).trim() !== '이제 10문제를 모두 맞히면 오늘의 퀴즈 완료!'
+            (await page.locator('#daily-quiz-subtitle').innerText()).trim() !== '10문제를 맞히면 오늘의 퀴즈 완료!'
+            || !(await page.locator('#daily-quiz-detail').evaluate((element) => element.hidden && !element.textContent.trim()))
             || (await page.locator('#daily-quiz-status').innerText()).trim() !== '다시 도전'
             || !(await page.locator('#daily-quiz-banner').evaluate((element) => element.classList.contains('is-perfect-target')))
         ) {

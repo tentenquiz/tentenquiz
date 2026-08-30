@@ -3079,14 +3079,23 @@ html[dir="rtl"] .pwa-install-steps {
     line-height: 1.25;
 }
 
+.daily-quiz-copy .daily-quiz-word-count {
+    color: #23653A;
+    font-size: 1em;
+    font-weight: 900;
+    line-height: inherit;
+}
+
 .daily-quiz-banner.is-learning #daily-quiz-subtitle {
     color: #356B56;
     font-weight: 800;
 }
 
-.daily-quiz-banner.is-perfect-target #daily-quiz-detail {
+.daily-quiz-banner.is-perfect-target #daily-quiz-subtitle {
     color: #23653A;
+    font-size: 15px;
     font-weight: 900;
+    line-height: 1.3;
 }
 
 .daily-quiz-status {
@@ -3151,6 +3160,10 @@ html[dir="rtl"] .daily-quiz-status {
 
     .daily-quiz-copy > span {
         font-size: 12px;
+    }
+
+    .daily-quiz-banner.is-perfect-target #daily-quiz-subtitle {
+        font-size: 14px;
     }
 
     .daily-quiz-status {
