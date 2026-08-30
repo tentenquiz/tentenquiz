@@ -3502,6 +3502,7 @@ html[dir="rtl"] .daily-quiz-status {
     color: #7D1B12;
     letter-spacing: 0.015em;
     line-height: 1.12;
+    overflow-wrap: anywhere;
     text-rendering: geometricPrecision;
     font-kerning: normal;
     font-feature-settings: 'kern' 1;
