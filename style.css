@@ -4198,6 +4198,18 @@ html[dir="rtl"] .daily-quiz-status {
         font-size: 18px;
     }
 
+    /* 2단계: 획수가 많거나 자형이 복잡한 문자권은 360px 이하에서 18px가 너무 작아 */
+    :lang(ko) .option-btn,
+    :lang(ja) .option-btn,
+    :lang(zh-Hans) .option-btn,
+    :lang(ar) .option-btn {
+        font-size: 20px;
+    }
+
+    :lang(zh-Hant) .option-btn {
+        font-size: 21px;
+    }
+
     .section-btn {
         font-size: 15px;
     }
