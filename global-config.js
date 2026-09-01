@@ -78,8 +78,7 @@
 
         const requestedLearningLanguage = query.get('learn')
             || (fallbackState && fallbackState.learningLanguage)
-            || savedLearningLanguage
-            || 'ja';
+            || savedLearningLanguage;
         const staticInterfaceLanguage = String(window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ || '').trim();
         const requestedInterfaceLanguage = query.get('native')
             || staticInterfaceLanguage
@@ -93,7 +92,9 @@
             || 'pinyin';
 
         const interfaceLanguage = byCode[requestedInterfaceLanguage] ? requestedInterfaceLanguage : 'ko';
-        const requestedLearning = byCode[requestedLearningLanguage] ? requestedLearningLanguage : 'ja';
+        // 완전 첫 방문(명시적 learn / fallbackState / 저장값이 모두 없을 때)의 학습 언어 기본값:
+        // 영어 사용자는 스페인어를, 그 외에는 영어를 배우는 것이 가장 일반적인 수요입니다.
+        const requestedLearning = byCode[requestedLearningLanguage] ? requestedLearningLanguage : (interfaceLanguage === 'en' ? 'es' : 'en');
         const learningLanguage = requestedLearning !== interfaceLanguage
             ? requestedLearning
             : languages.find((language) => language.code !== interfaceLanguage).code;
