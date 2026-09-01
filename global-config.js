@@ -39,6 +39,36 @@
         en: 'en', ko: 'ko', ja: 'ja', 'zh-CN': 'zh-cn', 'zh-TW': 'zh-tw',
         fr: 'fr', de: 'de', es: 'es', vi: 'vi', ar: 'ar', it: 'it', ru: 'ru'
     };
+
+    // ===== 기기/브라우저 언어 fallback =====
+    // URL ?native=, 정적 언어 경로, 런타임 상태, 사용자가 저장한 선택이
+    // 모두 없는 "완전한 첫 방문"에서만 쓰입니다. 지원 언어 목록은 위의
+    // languages / byCode 를 그대로 재사용하므로 따로 중복 정의하지 않습니다.
+    function normalizeBrowserLocale(value) {
+        const lower = String(value || '').trim().toLowerCase();
+        if (!lower) return '';
+        if (lower === 'zh' || lower.startsWith('zh-') || lower.startsWith('zh_')) {
+            return /(^|[-_])(tw|hk|mo|hant)([-_]|$)/.test(lower) ? 'zh-TW' : 'zh-CN';
+        }
+        const primary = lower.split(/[-_]/)[0];
+        const matched = languages.find((language) => language.code.toLowerCase() === primary);
+        return matched ? matched.code : '';
+    }
+
+    function detectBrowserInterfaceLanguage() {
+        try {
+            const candidates = Array.isArray(navigator.languages) && navigator.languages.length
+                ? navigator.languages
+                : [navigator.language];
+            for (const candidate of candidates) {
+                const code = normalizeBrowserLocale(candidate);
+                if (code && byCode[code]) return code;
+            }
+        } catch (error) {
+            return '';
+        }
+        return '';
+    }
     window.resolveTentenLanguageState = function resolveTentenLanguageState(currentUrl, fallbackState) {
         const url = new URL(currentUrl || window.location.href, window.location.href);
         const query = url.searchParams;
@@ -55,6 +85,7 @@
             || staticInterfaceLanguage
             || (fallbackState && fallbackState.interfaceLanguage)
             || savedInterfaceLanguage
+            || detectBrowserInterfaceLanguage()
             || 'ko';
         const requestedChineseReading = query.get('zhReading')
             || (fallbackState && fallbackState.chineseReading)
