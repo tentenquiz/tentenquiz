@@ -926,7 +926,12 @@
         const stage = Number(detail.stage);
         const section = String(detail.section || '');
         if (!nativeLanguage || !learningLanguage || !Number.isInteger(stage) || stage < 1 || !section) return '';
-        return `${nativeLanguage}:${learningLanguage}:${stage}:${section}`;
+        // milestone 이 없으면 예전과 완전히 같은 id 를 만듭니다.
+        // (이미 syncedMilestones 에 쌓인 옛 id 가 재동기화되지 않도록 형식을 유지)
+        // "25개 학습 완료" 와 "퍼펙트 3연속 완료" 를 구분하기 위해서만 뒤에 붙입니다.
+        const milestone = String(detail.milestone || '');
+        const baseId = `${nativeLanguage}:${learningLanguage}:${stage}:${section}`;
+        return milestone ? `${baseId}:${milestone}` : baseId;
     }
 
     function dailyQuizAchievementIdFromDetail(detail = {}) {

@@ -99,14 +99,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260830-daily-card-copy-v2">
+    <link rel="stylesheet" href="style.css?v=20260902-completion-rule-v1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "fr";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260830-daily-card-copy-v2"></script>
+    <script src="i18n.js?v=20260902-completion-rule-v1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -249,7 +249,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </span>
                 <span class="daily-quiz-copy">
                     <strong data-i18n="dailyQuizTitle">Quiz du jour</strong>
-                    <span id="daily-quiz-subtitle" data-i18n="dailyQuizSubtitle">Relevez le défi des 12 mots du jour !</span>
+                    <span id="daily-quiz-subtitle" data-i18n="dailyQuizSubtitle">Apprenez les 12 mots du jour, puis 3 sans-faute !</span>
                     <span id="daily-quiz-detail" class="daily-quiz-detail" hidden></span>
                 </span>
                 <span id="daily-quiz-status" class="daily-quiz-status" data-i18n="dailyQuizFirstChallenge">Commencer</span>
@@ -416,6 +416,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <span id="result-time-line" class="result-time-line">⏱️ Time: 0.00s</span>
 </p>
 
+<!-- 연속 퍼펙트 진행/초기화 안내 (script.js 의 renderPerfectStreakLine 이 채웁니다) -->
+<p id="perfect-streak-line" class="perfect-streak-line" hidden></p>
+
             <!-- 설치 유도 배너 ② 결과: 만점을 맞힌 순간에만 나타납니다. -->
             <div id="pwa-install-banner-result" class="pwa-banner pwa-banner-result" data-pwa-banner="result" hidden>
                 <img class="pwa-banner-appicon" src="assets/favicon/favicon-banner-128x128.png?v=20260821-install-banner-1" alt="" width="52" height="52" decoding="async">
@@ -474,12 +477,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <!-- ★★★ 아코디언 3개 ★★★ -->
         <section class="info-accordion">
           <button id="stage-why-toggle" class="acc-toggle ui-btn-accordion js-action-accordion-toggle" type="button" aria-expanded="false" aria-controls="stage-why-panel">
-            <span data-i18n="stageWhyTitle">📘 Pourquoi apprendre par niveau ?</span>
+            <span data-i18n="stageWhyTitle">📘 Comment terminer une section ?</span>
             <span class="acc-arrow" aria-hidden="true">▼</span>
           </button>
           <div id="stage-why-panel" class="acc-panel" role="region" aria-labelledby="stage-why-toggle" aria-hidden="true">
             <div class="acc-panel-inner">
-              <p data-i18n="stageWhyBody">TentenQuiz répartit 2 500 mots du quotidien en 10 niveaux afin de progresser pas à pas, en commençant par le vocabulaire familier. Chaque niveau comporte 10 thèmes de la vie courante, que vous pouvez choisir librement selon vos centres d’intérêt. Terminer puis réviser de petites unités permet de suivre ses progrès et d’apprendre régulièrement sans se sentir dépassé.</p>
+              <p data-i18n="stageWhyBody">TentenQuiz répartit 2 500 mots du quotidien en 10 niveaux, chacun avec 10 sections. Pour terminer une section, apprenez d’abord ses 25 mots au moins une fois. Une fois les 25 mots vus, le défi du sans-faute commence : réussissez 10 bonnes réponses sur 10 trois fois de suite et la section est terminée. Une seule erreur remet la série à 0, mais une section déjà terminée le reste.</p>
             </div>
           </div>
         </section>
@@ -684,10 +687,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260830-daily-card-copy-v2"></script>
-<script src="learning-records.js?v=20260820-click-fix-1"></script>
+<script src="script.js?v=20260902-completion-rule-v1"></script>
+<script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
-<script src="cloud-backup.js?v=20260829-daily-card-achievement-ui-v1"></script>
+<script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>
 <script src="pwa-install.js?v=20260821-install-banner-2"></script>
 <script src="ads-consent.js?v=20260820-1"></script>
 

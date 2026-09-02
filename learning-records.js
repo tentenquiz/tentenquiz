@@ -9,6 +9,12 @@
     const DAILY_QUIZ_ACHIEVEMENT_PREFIX = 'tenten.dailyQuizAchievement.v1.';
     const DAILY_QUIZ_ACHIEVEMENT_VERSION = 1;
     const MAX_DAILY_QUIZ_ACHIEVEMENTS = 132;
+    // 섹션 퍼펙트 기록(완료 규칙 2026 개정). script.js 의 저장 구조와 짝을 이룹니다.
+    const SECTION_PERFECT_PREFIX = 'tenten.sectionPerfect.v1.';
+    const SECTION_PERFECT_VERSION = 1;
+    const PERFECT_STREAK_TARGET = 3;
+    const MAX_SECTION_PERFECT_STORES = 132;
+    const MAX_SECTION_PERFECT_ENTRIES = 400;
     const MAX_DAILY_QUIZ_DATES = 800;
     // 이 값을 넘으면 정상 데이터로 보지 않고 거부합니다(신뢰할 수 없는 백업 파일 방어).
     // MAX_DAILY_QUIZ_DATES 와 이 값 사이는 잘라내기만 합니다.
@@ -56,6 +62,108 @@
 
     function dailyQuizAchievementStorageKey(nativeLanguage, learningLanguage) {
         return `${DAILY_QUIZ_ACHIEVEMENT_PREFIX}${encodeURIComponent(nativeLanguage)}.to.${encodeURIComponent(learningLanguage)}`;
+    }
+
+function sectionPerfectStorageKey(nativeLanguage, learningLanguage) {
+        return `${SECTION_PERFECT_PREFIX}${encodeURIComponent(nativeLanguage)}.to.${encodeURIComponent(learningLanguage)}`;
+    }
+
+    // 백업 파일은 사용자가 손댈 수 있으므로 값 범위를 전부 강제합니다.
+    function normalizeSectionPerfectEntry(value) {
+        const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        const toCount = (raw) => {
+            const number = Math.floor(Number(raw));
+            return Number.isFinite(number) && number > 0 ? Math.min(PERFECT_STREAK_TARGET, number) : 0;
+        };
+        const toTime = (raw) => {
+            const number = Math.floor(Number(raw));
+            return Number.isFinite(number) && number > 0 ? number : 0;
+        };
+        const masteredAt = toTime(source.masteredAt);
+        const perfectStreak = masteredAt > 0 ? PERFECT_STREAK_TARGET : toCount(source.perfectStreak);
+        return {
+            perfectStreak,
+            bestPerfectStreak: Math.max(perfectStreak, toCount(source.bestPerfectStreak)),
+            masteredAt,
+            lastGameAt: toTime(source.lastGameAt)
+        };
+    }
+
+    function normalizeSectionPerfectStore(record, languageCodes = new Set(getLanguageCodes())) {
+        const source = record && typeof record === 'object' && !Array.isArray(record) ? record : {};
+        const nativeLanguage = languageCodes.has(source.nativeLanguage) ? source.nativeLanguage : 'ko';
+        const learningLanguage = languageCodes.has(source.learningLanguage) ? source.learningLanguage : 'en';
+        const rawSections = source.sections && typeof source.sections === 'object' && !Array.isArray(source.sections)
+            ? source.sections
+            : {};
+        const sections = {};
+        Object.keys(rawSections).slice(0, MAX_SECTION_PERFECT_ENTRIES).forEach((key) => {
+            if (!/^\d+::.+$/.test(String(key))) return;
+            sections[String(key)] = normalizeSectionPerfectEntry(rawSections[key]);
+        });
+        return { version: SECTION_PERFECT_VERSION, nativeLanguage, learningLanguage, sections };
+    }
+
+    function collectSectionPerfectStores() {
+        const stores = [];
+        const languageCodes = new Set(getLanguageCodes());
+        const length = Math.max(0, Number(global.localStorage.length) || 0);
+        for (let index = 0; index < length; index += 1) {
+            const key = typeof global.localStorage.key === 'function' ? global.localStorage.key(index) : '';
+            if (!String(key || '').startsWith(SECTION_PERFECT_PREFIX)) continue;
+            try {
+                stores.push(normalizeSectionPerfectStore(
+                    JSON.parse(global.localStorage.getItem(key) || 'null'),
+                    languageCodes
+                ));
+            } catch (error) {
+                console.warn('백업에서 제외한 손상된 섹션 퍼펙트 기록:', error);
+            }
+        }
+        return stores
+            .sort((first, second) => `${first.nativeLanguage}:${first.learningLanguage}`.localeCompare(`${second.nativeLanguage}:${second.learningLanguage}`))
+            .slice(0, MAX_SECTION_PERFECT_STORES);
+    }
+
+    // 완료(masteredAt)는 OR 로 합칩니다. 한쪽 기기에서 완료했으면 완료를 유지합니다.
+    function mergeSectionPerfectEntry(first, second) {
+        const masteredCandidates = [first.masteredAt, second.masteredAt].filter((value) => value > 0);
+        const masteredAt = masteredCandidates.length ? Math.min(...masteredCandidates) : 0;
+        const perfectStreak = masteredAt > 0
+            ? PERFECT_STREAK_TARGET
+            : Math.max(first.perfectStreak, second.perfectStreak);
+        return {
+            perfectStreak,
+            bestPerfectStreak: Math.max(first.bestPerfectStreak, second.bestPerfectStreak, perfectStreak),
+            masteredAt,
+            lastGameAt: Math.max(first.lastGameAt, second.lastGameAt)
+        };
+    }
+
+    function mergeSectionPerfectStore(first, second) {
+        const sections = { ...first.sections };
+        Object.entries(second.sections || {}).forEach(([key, entry]) => {
+            sections[key] = sections[key] ? mergeSectionPerfectEntry(sections[key], entry) : entry;
+        });
+        return { ...first, sections };
+    }
+
+    function restoreSectionPerfectStores(incomingStores) {
+        const languageCodes = new Set(getLanguageCodes());
+        const merged = new Map();
+        [...collectSectionPerfectStores(), ...(incomingStores || [])].forEach((record) => {
+            const normalized = normalizeSectionPerfectStore(record, languageCodes);
+            const pairKey = `${normalized.nativeLanguage}:${normalized.learningLanguage}`;
+            merged.set(pairKey, merged.has(pairKey)
+                ? mergeSectionPerfectStore(merged.get(pairKey), normalized)
+                : normalized);
+        });
+        merged.forEach((record) => {
+            global.localStorage.setItem(
+                sectionPerfectStorageKey(record.nativeLanguage, record.learningLanguage),
+                JSON.stringify(record)
+            );
+        });
     }
 
     function validDateKey(value) {
@@ -378,6 +486,7 @@
                 chineseReading: String((global.tentenGlobal && global.tentenGlobal.chineseReading) || 'pinyin')
             },
             dailyQuizAchievements: collectDailyQuizAchievements(),
+            sectionPerfect: collectSectionPerfectStores(),
             databases: snapshots.filter(Boolean)
         };
         payload.recordCount = countBackupRecords(payload);
@@ -416,6 +525,21 @@
             const pairKey = `${normalized.nativeLanguage}:${normalized.learningLanguage}`;
             if (achievementPairs.has(pairKey)) throw new Error('Duplicate daily quiz achievement');
             achievementPairs.add(pairKey);
+            return normalized;
+        });
+
+        // 구버전 백업에는 이 필드가 없습니다. dailyQuizAchievements 와 같은 방식으로
+        // undefined 를 [] 로 관대하게 처리해 하위 호환을 유지합니다.
+        const rawSectionPerfect = payload.sectionPerfect === undefined ? [] : payload.sectionPerfect;
+        if (!Array.isArray(rawSectionPerfect) || rawSectionPerfect.length > MAX_SECTION_PERFECT_STORES) {
+            throw new Error('Invalid section perfect list');
+        }
+        const sectionPerfectPairs = new Set();
+        const sectionPerfect = rawSectionPerfect.map((record) => {
+            const normalized = normalizeSectionPerfectStore(record, languageCodes);
+            const pairKey = `${normalized.nativeLanguage}:${normalized.learningLanguage}`;
+            if (sectionPerfectPairs.has(pairKey)) throw new Error('Duplicate section perfect record');
+            sectionPerfectPairs.add(pairKey);
             return normalized;
         });
 
@@ -466,6 +590,8 @@
                 chineseReading: preferences.chineseReading
             },
             dailyQuizAchievements,
+            // ★ 여기에 넣지 않으면 검증만 통과하고 복원 시 조용히 사라집니다 ★
+            sectionPerfect,
             databases
         };
     }
@@ -488,6 +614,7 @@
             incomingByName.get(databaseName) || Object.fromEntries(STORE_NAMES.map((name) => [name, []]))
         ));
         restoreDailyQuizAchievements(payload.dailyQuizAchievements || []);
+        restoreSectionPerfectStores(payload.sectionPerfect || []);
         restorePreferences(payload.preferences);
     }
 
@@ -640,6 +767,8 @@
         countBackupRecords,
         collectDailyQuizAchievements,
         restoreDailyQuizAchievements,
+        collectSectionPerfectStores,
+        restoreSectionPerfectStores,
         getAllowedDatabaseNames,
         downloadPayload,
         reloadWithRestoredPreferences

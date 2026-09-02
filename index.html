@@ -98,9 +98,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260830-daily-card-copy-v2">
+    <link rel="stylesheet" href="style.css?v=20260902-completion-rule-v1">
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260830-daily-card-copy-v2"></script>
+    <script src="i18n.js?v=20260902-completion-rule-v1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -243,7 +243,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </span>
                 <span class="daily-quiz-copy">
                     <strong data-i18n="dailyQuizTitle">Today’s Quiz</strong>
-                    <span id="daily-quiz-subtitle" data-i18n="dailyQuizSubtitle">Take on today’s 12 words!</span>
+                    <span id="daily-quiz-subtitle" data-i18n="dailyQuizSubtitle">Learn today’s 12 words, then 3 perfect runs!</span>
                     <span id="daily-quiz-detail" class="daily-quiz-detail" hidden></span>
                 </span>
                 <span id="daily-quiz-status" class="daily-quiz-status" data-i18n="dailyQuizFirstChallenge">Start</span>
@@ -410,6 +410,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <span id="result-time-line" class="result-time-line">⏱️ Time: 0.00s</span>
 </p>
 
+<!-- 연속 퍼펙트 진행/초기화 안내 (script.js 의 renderPerfectStreakLine 이 채웁니다) -->
+<p id="perfect-streak-line" class="perfect-streak-line" hidden></p>
+
             <!-- 설치 유도 배너 ② 결과: 만점을 맞힌 순간에만 나타납니다. -->
             <div id="pwa-install-banner-result" class="pwa-banner pwa-banner-result" data-pwa-banner="result" hidden>
                 <img class="pwa-banner-appicon" src="assets/favicon/favicon-banner-128x128.png?v=20260821-install-banner-1" alt="" width="52" height="52" decoding="async">
@@ -468,12 +471,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <!-- ★★★ 아코디언 3개 ★★★ -->
         <section class="info-accordion">
           <button id="stage-why-toggle" class="acc-toggle ui-btn-accordion js-action-accordion-toggle" type="button" aria-expanded="false" aria-controls="stage-why-panel">
-            <span data-i18n="stageWhyTitle">📘 Why learn in stages?</span>
+            <span data-i18n="stageWhyTitle">📘 How do I complete a section?</span>
             <span class="acc-arrow" aria-hidden="true">▼</span>
           </button>
           <div id="stage-why-panel" class="acc-panel" role="region" aria-labelledby="stage-why-toggle" aria-hidden="true">
             <div class="acc-panel-inner">
-              <p data-i18n="stageWhyBody">TentenQuiz divides 2,500 everyday words into 10 stages so learners can progress step by step from familiar vocabulary. Each stage includes 10 practical topics, allowing you to begin with the subjects that interest you most. Completing and reviewing small sets makes it easier to track progress and continue learning without feeling overwhelmed.</p>
+              <p data-i18n="stageWhyBody">TentenQuiz splits 2,500 everyday words into 10 stages, each with 10 sections. To complete a section, first study all 25 of its words at least once. Once all 25 are learned, the perfect run begins: score 10 out of 10 three times in a row and the section is complete. A single mistake sends the streak back to 0, but a section you have already completed stays complete.</p>
             </div>
           </div>
         </section>
@@ -678,10 +681,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260830-daily-card-copy-v2"></script>
-<script src="learning-records.js?v=20260820-click-fix-1"></script>
+<script src="script.js?v=20260902-completion-rule-v1"></script>
+<script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
-<script src="cloud-backup.js?v=20260829-daily-card-achievement-ui-v1"></script>
+<script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>
 <script src="pwa-install.js?v=20260821-install-banner-2"></script>
 <script src="ads-consent.js?v=20260820-1"></script>
 

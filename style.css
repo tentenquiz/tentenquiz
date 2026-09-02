@@ -4629,3 +4629,47 @@ html[dir="rtl"] .daily-quiz-status {
         font-size: 20px !important;
     }
 }
+
+
+/* =========================================================
+   29. 완료 규칙 개정 — 진행 배지와 결과 화면 안내 줄
+   ---------------------------------------------------------
+   섹션/스테이지 배지는 3단계로 읽힙니다.
+     주황(기본) = 아직 단어 학습 중 "{n}개 남음"
+     보라       = 단어는 다 봤고 퍼펙트 도전 중 "⭐ 퍼펙트 n / 3"
+     초록       = 완료 "✓ 완료"
+   같은 주황으로 두면 단계 전환이 사용자 눈에 보이지 않습니다.
+   ========================================================= */
+.section-progress-badge.is-mastering {
+    background: #EEE8FB;
+    color: #5B3FA8;
+}
+
+/* 결과 화면: 점수 줄 바로 아래 한 줄. 실패 사유를 알 수 있는 유일한 자리입니다. */
+.perfect-streak-line {
+    margin: -10px 0 18px !important;
+    text-align: center;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    line-height: 1.4 !important;
+    color: #5B3FA8 !important;
+    word-break: keep-all;
+}
+
+.perfect-streak-line[hidden] {
+    display: none;
+}
+
+.perfect-streak-line.is-reset {
+    color: #8A7D6B !important;
+}
+
+.perfect-streak-line.is-mastered {
+    color: #2F8849 !important;
+}
+
+@media (max-width: 480px) {
+    .perfect-streak-line {
+        font-size: 15.5px !important;
+    }
+}

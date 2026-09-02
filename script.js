@@ -175,6 +175,50 @@ function showPerfectScoreCelebration(correctCount = score) {
     }, 1800);
 }
 
+// 결과 화면의 "연속 퍼펙트" 한 줄. 사용자가 왜 0/3 이 됐는지 알 수 있는 유일한 자리입니다.
+// 카드 배지에는 실패 사유를 넣지 않습니다(홈 화면이 실패 메시지로 덮이기 때문).
+function renderPerfectStreakLine(sectionOutcome) {
+    const line = document.getElementById('perfect-streak-line');
+    if (!line) return;
+    line.hidden = true;
+    line.textContent = '';
+    line.classList.remove('is-reset', 'is-mastered');
+
+    // 오늘의 퀴즈는 자체 진행도를 배너에서 보여 주므로 결과 화면에서도 같은 문법을 씁니다.
+    if (window.selectedQuizSection === VIRTUAL_SECTION_DAILY) {
+        const session = activeDailyQuizSession || readDailyQuizSession();
+        if (!session || !session.all12Exposed) return;
+        if (session.cleared) {
+            line.textContent = uiT('dailyQuizClear');
+            line.classList.add('is-mastered');
+        } else {
+            line.textContent = uiT('perfectProgress', {
+                count: getDailyPerfectStreak(session),
+                total: PERFECT_STREAK_TARGET
+            });
+        }
+        line.hidden = false;
+        return;
+    }
+
+    if (!sectionOutcome) return;
+    if (sectionOutcome.state === 'mastered') {
+        line.textContent = uiT('sectionMastered');
+        line.classList.add('is-mastered');
+    } else if (sectionOutcome.state === 'progress') {
+        line.textContent = uiT('perfectProgress', {
+            count: sectionOutcome.streak,
+            total: PERFECT_STREAK_TARGET
+        });
+    } else if (sectionOutcome.state === 'reset') {
+        line.textContent = uiT('perfectReset');
+        line.classList.add('is-reset');
+    } else {
+        return;
+    }
+    line.hidden = false;
+}
+
 function shuffleInPlace(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -332,6 +376,205 @@ const DAILY_QUIZ_SLOT_TEMPLATE = [
 window.TENTEN_DAILY_QUIZ_WORD_COUNT = DAILY_QUIZ_WORD_COUNT;
 window.TENTEN_DAILY_QUIZ_GAME_QUESTION_COUNT = DAILY_QUIZ_GAME_QUESTION_COUNT;
 window.TENTEN_DAILY_QUIZ_QUESTION_COUNT = DAILY_QUIZ_GAME_QUESTION_COUNT;
+
+// =====================================================================
+// 완료 규칙 (2026 개정) — 섹션/스테이지/오늘의 퀴즈 공통
+// ---------------------------------------------------------------------
+//  섹션 완료  = 25개 단어를 모두 학습  +  "모두 학습한 상태로 시작한" 게임에서
+//               10/10 퍼펙트 3회 연속
+//  스테이지 완료 = 소속 10개 섹션이 모두 완료
+//  오늘의 퀴즈 완료 = 12개 단어를 모두 학습 + 같은 방식의 3회 연속 퍼펙트
+//  완료는 되돌릴 수 없습니다(irreversible).
+// =====================================================================
+const PERFECT_STREAK_TARGET = 3;
+const SECTION_PERFECT_STORAGE_PREFIX = 'tenten.sectionPerfect.v1';
+const SECTION_PERFECT_VERSION = 1;
+const SECTION_PERFECT_MAX_ENTRIES = 400;
+
+// ---------------------------------------------------------------------
+// 완료 규칙 변경 기준 시각 (UTC epoch milliseconds)
+//
+// 이 시각 "이전"에 섹션의 단어를 모두 학습해 두었다면 옛 규칙으로 이미 완료한
+// 것으로 보고 완료를 그대로 유지합니다(M4). 별도의 일회성 마이그레이션 없이
+// learningProgress 레코드의 learnedAt 만 읽어 판정하므로, 클라우드 백업과
+// 다른 기기 복구에도 판정이 그대로 따라옵니다.
+//
+// ★ 반드시 "배포가 끝나 있을 시각보다 뒤" 로 잡아야 합니다 ★
+// 기준 시각과 실제 배포 완료 시각 사이에는 사용자가 아직 옛 코드를 쓰고 있습니다.
+// 그 사이에 25번째 단어를 학습해 완료한 사용자는, 새 코드를 받는 순간
+// max(learnedAt) 이 기준 시각보다 뒤라서 완료를 잃게 됩니다.
+// 그래서 기준 시각은 배포 예정 시각에 안전 마진을 더해 잡습니다.
+//
+//   확정값: 2026-09-04T00:00:00Z  (= 1788480000000)
+//   → 이 시각 이전에 배포가 완료되어 있어야 합니다.
+//   → 배포가 미뤄지면 값을 더 뒤로 옮기고 다시 검증하세요.
+//     값을 키우는 방향은 항상 안전합니다(완료를 더 지켜 줌).
+//     값을 줄이면 기존 완료를 박탈할 수 있으므로 절대 금지입니다.
+// ---------------------------------------------------------------------
+const COMPLETION_RULE_CHANGE_AT = Date.UTC(2026, 8, 4, 0, 0, 0);
+
+// 테스트에서만 window.__TENTEN_COMPLETION_RULE_CHANGE_AT__ 로 덮어씁니다.
+function getCompletionRuleChangeAt() {
+    const override = Number(window.__TENTEN_COMPLETION_RULE_CHANGE_AT__);
+    return Number.isFinite(override) ? override : COMPLETION_RULE_CHANGE_AT;
+}
+
+
+// ---------- 섹션 퍼펙트 기록 저장소 (localStorage) ----------
+function getSectionPerfectStorageKey(nativeLanguage, learningLanguage) {
+    const native = String(nativeLanguage || window.tentenGlobal?.interfaceLanguage || 'ko');
+    const learning = String(learningLanguage || window.tentenGlobal?.learningLanguage || 'en');
+    return `${SECTION_PERFECT_STORAGE_PREFIX}.${encodeURIComponent(native)}.to.${encodeURIComponent(learning)}`;
+}
+
+function makeSectionPerfectKey(stage, section) {
+    // 섹션 키에 '_' 가 들어 있으므로(nature_weather) '::' 로 구분합니다.
+    return `${Number(stage) || 0}::${String(section || '')}`;
+}
+
+function emptySectionPerfectStore(nativeLanguage, learningLanguage) {
+    return {
+        version: SECTION_PERFECT_VERSION,
+        nativeLanguage: String(nativeLanguage || window.tentenGlobal?.interfaceLanguage || 'ko'),
+        learningLanguage: String(learningLanguage || window.tentenGlobal?.learningLanguage || 'en'),
+        sections: {}
+    };
+}
+
+function emptySectionPerfectEntry() {
+    return { perfectStreak: 0, bestPerfectStreak: 0, masteredAt: 0, lastGameAt: 0 };
+}
+
+// 깨진 값 하나 때문에 앱이 시작되지 않으면 안 되므로 전부 방어적으로 정규화합니다.
+function normalizeSectionPerfectEntry(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const toCount = (raw) => {
+        const number = Math.floor(Number(raw));
+        return Number.isFinite(number) && number > 0 ? Math.min(PERFECT_STREAK_TARGET, number) : 0;
+    };
+    const toTime = (raw) => {
+        const number = Math.floor(Number(raw));
+        return Number.isFinite(number) && number > 0 ? number : 0;
+    };
+    const masteredAt = toTime(source.masteredAt);
+    const perfectStreak = masteredAt > 0 ? PERFECT_STREAK_TARGET : toCount(source.perfectStreak);
+    return {
+        perfectStreak,
+        bestPerfectStreak: Math.max(perfectStreak, toCount(source.bestPerfectStreak)),
+        masteredAt,
+        lastGameAt: toTime(source.lastGameAt)
+    };
+}
+
+function normalizeSectionPerfectStore(value, nativeLanguage, learningLanguage) {
+    const fallback = emptySectionPerfectStore(nativeLanguage, learningLanguage);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+    const rawSections = value.sections && typeof value.sections === 'object' && !Array.isArray(value.sections)
+        ? value.sections
+        : {};
+    const sections = {};
+    Object.keys(rawSections).slice(0, SECTION_PERFECT_MAX_ENTRIES).forEach((key) => {
+        if (!/^\d+::.+$/.test(String(key))) return;
+        sections[String(key)] = normalizeSectionPerfectEntry(rawSections[key]);
+    });
+    return { ...fallback, sections };
+}
+
+function readSectionPerfectStore(nativeLanguage, learningLanguage) {
+    try {
+        const raw = window.localStorage.getItem(getSectionPerfectStorageKey(nativeLanguage, learningLanguage));
+        return normalizeSectionPerfectStore(raw ? JSON.parse(raw) : null, nativeLanguage, learningLanguage);
+    } catch (error) {
+        console.warn('섹션 퍼펙트 기록을 읽지 못했습니다:', error);
+        return emptySectionPerfectStore(nativeLanguage, learningLanguage);
+    }
+}
+
+function saveSectionPerfectStore(store) {
+    const normalized = normalizeSectionPerfectStore(store, store?.nativeLanguage, store?.learningLanguage);
+    try {
+        window.localStorage.setItem(
+            getSectionPerfectStorageKey(normalized.nativeLanguage, normalized.learningLanguage),
+            JSON.stringify(normalized)
+        );
+    } catch (error) {
+        console.warn('섹션 퍼펙트 기록을 저장하지 못했습니다:', error);
+    }
+    return normalized;
+}
+
+function getSectionPerfectEntry(store, stage, section) {
+    const entry = store && store.sections ? store.sections[makeSectionPerfectKey(stage, section)] : null;
+    return normalizeSectionPerfectEntry(entry);
+}
+
+// ---------- M4: learnedAt 기반 "규칙 변경 전 완료" 판정 ----------
+// learnedAt 은 db.js 의 markQuestionLearned 가 최초 노출 시 한 번만 기록하며,
+// 이후 덮어쓰지 않습니다. 백업/복구는 레코드를 그대로 옮기므로 값이 보존됩니다.
+// 값이 없거나 숫자가 아니면 "규칙 변경 이전"으로 보수적으로 처리해 진도를 지킵니다.
+// (레코드 자체가 없으면 애초에 미학습이므로 완료로 인정되지 않습니다.)
+function isLegacyCompletedFromRecords(questions, learnedAtById) {
+    if (!Array.isArray(questions) || questions.length === 0) return false;
+    let latestLearnedAt = 0;
+    for (const item of questions) {
+        const id = getQuestionProgressId(item);
+        if (!id || !learnedAtById.has(id)) return false;
+        const learnedAt = Number(learnedAtById.get(id));
+        if (Number.isFinite(learnedAt) && learnedAt > 0) {
+            latestLearnedAt = Math.max(latestLearnedAt, learnedAt);
+        }
+    }
+    return latestLearnedAt < getCompletionRuleChangeAt();
+}
+
+function buildLearnedAtMap(learnedRecords) {
+    const map = new Map();
+    (Array.isArray(learnedRecords) ? learnedRecords : []).forEach((record) => {
+        if (record && typeof record.id === 'string') map.set(record.id, record.learnedAt);
+    });
+    return map;
+}
+
+// ---------- 섹션 / 스테이지 완료 판정 ----------
+function isSectionCompleted(sectionQuestions, learnedAtById, perfectStore, stage, section) {
+    if (isLegacyCompletedFromRecords(sectionQuestions, learnedAtById)) return true;
+    return getSectionPerfectEntry(perfectStore, stage, section).masteredAt > 0;
+}
+
+// 스테이지 완료 = 소속 섹션이 모두 완료. 규칙 변경 전에 250개를 모두 학습해 둔
+// 스테이지는 legacy 로 완료를 유지합니다. 섹션 완료가 되돌릴 수 없으므로
+// 스테이지 완료도 자동으로 되돌릴 수 없습니다.
+function countCompletedSections(sectionsWithQuestions, learnedAtById, perfectStore, stage) {
+    let completed = 0;
+    (sectionsWithQuestions || []).forEach(({ key, questions }) => {
+        if (!questions || !questions.length) return;
+        if (isSectionCompleted(questions, learnedAtById, perfectStore, stage, key)) completed += 1;
+    });
+    return completed;
+}
+
+function isStageCompleted(stageQuestions, sectionsWithQuestions, learnedAtById, perfectStore, stage) {
+    if (isLegacyCompletedFromRecords(stageQuestions, learnedAtById)) return true;
+    const usable = (sectionsWithQuestions || []).filter((entry) => entry.questions && entry.questions.length);
+    if (!usable.length) return false;
+    return countCompletedSections(usable, learnedAtById, perfectStore, stage) === usable.length;
+}
+
+// ---------- 오늘의 퀴즈: session.games[] 파생 계산 (새 저장 필드 없음) ----------
+function getDailyPerfectStreak(session) {
+    const games = session && Array.isArray(session.games) ? session.games : [];
+    let streak = 0;
+    for (let index = games.length - 1; index >= 0; index -= 1) {
+        const game = games[index];
+        if (!game) break;
+        // 12개를 모두 학습하기 전에 치른 게임은 숙달 streak 대상이 아닙니다.
+        if (game.allWordsExposedAtStart !== true) continue;
+        if (Number(game.score) !== DAILY_QUIZ_GAME_QUESTION_COUNT) break;
+        streak += 1;
+        if (streak >= PERFECT_STREAK_TARGET) break;
+    }
+    return Math.min(PERFECT_STREAK_TARGET, streak);
+}
 let activeDailyQuizSession = null;
 let dailyQuizBannerCelebrationTimer = null;
 let dailyQuizBannerCelebrationStarter = null;
@@ -1667,6 +1910,16 @@ function updateDailyQuizBanner() {
             : uiT('dailyQuizNextStreakChallenge', { count: target });
         renderDailyQuizStartSubtitle(subtitle);
     }
+    // 12개를 모두 학습한 뒤부터 퍼펙트 진행도를 한 줄로 덧붙입니다.
+    // (연속 "일수" 기록은 status 영역에 그대로 두어 서로 혼동되지 않게 합니다)
+    if (detail && session && !session.cleared && session.all12Exposed) {
+        detail.hidden = false;
+        detail.textContent = uiT('perfectProgress', {
+            count: getDailyPerfectStreak(session),
+            total: PERFECT_STREAK_TARGET
+        });
+    }
+
     button.setAttribute('aria-label', `${uiT('dailyQuizTitle')} · ${status.textContent}`);
     startDailyQuizBannerCelebration(button, Boolean(session?.cleared));
 }
@@ -1825,8 +2078,14 @@ function completeDailyQuizAttempt(finalScore) {
         session.currentGame.allWordsExposedAtStart === true
         && session.lastScore === DAILY_QUIZ_GAME_QUESTION_COUNT
     );
+    // perfectGame 은 readDailyQuizSession() 의 기존 무결성 검사가 쓰는 값입니다.
+    // 여기 의미(퍼펙트 1회 이상)를 3연속으로 바꾸면, 옛 규칙으로 이미 완료한
+    // 오늘 세션이 invalid 로 판정돼 그날 진행이 통째로 사라집니다. 그대로 둡니다.
     session.perfectGame = Boolean(session.perfectGame || qualifiesForCompletion);
-    const clearedNow = !session.cleared && session.all12Exposed && qualifiesForCompletion;
+    // 새로 완료가 발생하는 조건만 "3회 연속 퍼펙트" 로 바꿉니다.
+    const clearedNow = !session.cleared
+        && session.all12Exposed
+        && getDailyPerfectStreak(session) >= PERFECT_STREAK_TARGET;
     if (clearedNow) {
         session.cleared = true;
         session.clearedAt = completedAt;
@@ -2001,6 +2260,8 @@ async function renderSectionButtons() {
             : [];
         if (renderToken !== sectionButtonRenderToken) return;
         const learnedIds = new Set(learnedRecords.map((item) => item.id));
+        const learnedAtById = buildLearnedAtMap(learnedRecords);
+        const sectionPerfectStore = readSectionPerfectStore();
         let totalQuestionCount = 0;
         let totalLearnedCount = 0;
 
@@ -2023,7 +2284,12 @@ async function renderSectionButtons() {
                 0
             );
             const remainingCount = Math.max(0, sectionQuestions.length - learnedCount);
-            const isComplete = sectionQuestions.length > 0 && remainingCount === 0;
+            // 새 규칙: 단어를 다 봤다고 완료가 아니라, 그 뒤 퍼펙트 3연속까지 해야 완료입니다.
+            // 규칙 변경 전에 이미 다 학습해 둔 섹션은 legacy 로 완료를 유지합니다.
+            const perfectEntry = getSectionPerfectEntry(sectionPerfectStore, selectedStage, section.key);
+            const isComplete = sectionQuestions.length > 0
+                && isSectionCompleted(sectionQuestions, learnedAtById, sectionPerfectStore, selectedStage, section.key);
+            const isMastering = !isComplete && sectionQuestions.length > 0 && remainingCount === 0;
             totalQuestionCount += sectionQuestions.length;
             totalLearnedCount += learnedCount;
 
@@ -2036,8 +2302,14 @@ async function renderSectionButtons() {
             button.innerHTML = `
                 <span class="section-emoji">${escapeHtml(section.emoji)}</span>
                 <span class="section-label">${escapeHtml(section.label)}</span>
-                <span class="section-progress-badge ${isComplete ? 'is-complete' : ''}">
-                    ${escapeHtml(isComplete ? uiT('complete') : uiT('remaining', { count: remainingCount }))}
+                <span class="section-progress-badge ${isComplete ? 'is-complete' : isMastering ? 'is-mastering' : ''}">
+                    ${escapeHtml(
+                        isComplete
+                            ? uiT('complete')
+                            : isMastering
+                                ? uiT('perfectProgress', { count: perfectEntry.perfectStreak, total: PERFECT_STREAK_TARGET })
+                                : uiT('remaining', { count: remainingCount })
+                    )}
                 </span>
             `;
             sectionGrid.appendChild(button);
@@ -2092,6 +2364,7 @@ async function renderSectionButtons() {
 
     const stages = getAvailableStages();
     const stageEmojis = ['🌱', '🐣', '📖', '✏️', '💬', '🧠', '🔥', '⭐', '🏆', '👑'];
+    const stagePerfectStore = readSectionPerfectStore();
     const stageProgress = await Promise.all(stages.map(async (stage) => {
         const stageQuestions = activeQuizData.filter((item) => Number(item.stage) === Number(stage));
         const uniqueQuestionIds = new Set(stageQuestions.map((item) => getQuestionProgressId(item)));
@@ -2104,17 +2377,33 @@ async function renderSectionButtons() {
             0
         );
 
+        // 새 규칙: 스테이지는 소속 10개 섹션이 "모두 완료" 되어야 완료입니다.
+        // 단어 250개를 다 봤다는 것만으로는 완료가 아닙니다.
+        // 규칙 변경 전에 250개를 모두 학습해 둔 스테이지는 legacy 로 완료를 유지합니다.
+        const learnedAtById = buildLearnedAtMap(learnedRecords);
+        const sectionsWithQuestions = getAvailableSectionsByStage(String(stage))
+            .map((section) => ({ key: section.key, questions: getUniqueSectionQuestions(stage, section.key) }))
+            .filter((entry) => entry.questions.length > 0);
+        const completedSectionCount = countCompletedSections(sectionsWithQuestions, learnedAtById, stagePerfectStore, stage);
+        const stageCompleted = isStageCompleted(stageQuestions, sectionsWithQuestions, learnedAtById, stagePerfectStore, stage);
+
         return {
             stage,
             questionCount: uniqueQuestionIds.size,
-            remainingCount: Math.max(0, uniqueQuestionIds.size - learnedCount)
+            remainingCount: Math.max(0, uniqueQuestionIds.size - learnedCount),
+            sectionCount: sectionsWithQuestions.length,
+            completedSectionCount,
+            stageCompleted
         };
     }));
     if (renderToken !== sectionButtonRenderToken) return;
 
     let completedStageOrder = 0;
-    stageProgress.forEach(({ stage, questionCount, remainingCount }) => {
-        const isComplete = questionCount > 0 && remainingCount === 0;
+    stageProgress.forEach(({ stage, questionCount, remainingCount, sectionCount, completedSectionCount, stageCompleted }) => {
+        const isComplete = questionCount > 0 && stageCompleted;
+        // 250개를 다 학습했지만 아직 스테이지 완료가 아닌 구간에서는
+        // 기존 "{n}개 남음" 대신 섹션 완료 개수를 보여 줍니다.
+        const isStageMastering = !isComplete && questionCount > 0 && remainingCount === 0;
         const button = document.createElement('button');
         button.className = `section-btn stage-select-btn${isComplete ? ' completed-progress-btn completed-stage-btn' : ''}`;
         button.type = 'button';
@@ -2124,8 +2413,14 @@ async function renderSectionButtons() {
         button.innerHTML = `
             <span class="section-emoji stage-select-emoji">${stageEmojis[stage - 1] || '📚'}</span>
             <span class="stage-title">${escapeHtml(uiT('stage', { stage }))}</span>
-            <span class="section-progress-badge ${isComplete ? 'is-complete' : ''}">
-                ${escapeHtml(isComplete ? uiT('complete') : uiT('remaining', { count: remainingCount }))}
+            <span class="section-progress-badge ${isComplete ? 'is-complete' : isStageMastering ? 'is-mastering' : ''}">
+                ${escapeHtml(
+                    isComplete
+                        ? uiT('complete')
+                        : isStageMastering
+                            ? uiT('stageSectionsProgress', { count: completedSectionCount, total: sectionCount })
+                            : uiT('remaining', { count: remainingCount })
+                )}
             </span>
         `;
         sectionGrid.appendChild(button);
@@ -3383,6 +3678,93 @@ function buildNearestStagePool(source, selectedStage, usedKeySet) {
     return ordered.filter((item) => !usedKeySet.has(getItemUniqueKey(item)));
 }
 
+// 이 게임이 "퍼펙트 3연속" 판정 대상인지 게임 시작 시점에 확정해 둡니다.
+// recordQuestionAsLearned() 가 게임 도중 진도를 올리므로, 결과 화면에서 다시 세면
+// 25번째 단어를 그 게임에서 처음 본 경우를 걸러낼 수 없습니다.
+let currentGamePerfectSnapshot = null;
+
+async function captureSectionPerfectSnapshot(stage, sectionKey) {
+    if (isSpecialReviewSection(sectionKey)) return null;
+    const sectionQuestions = getUniqueSectionQuestions(stage, sectionKey);
+    if (!sectionQuestions.length) return null;
+    if (typeof getLearningProgressByStage !== 'function') return null;
+
+    let learnedRecords = [];
+    try {
+        learnedRecords = await getLearningProgressByStage(stage);
+    } catch (error) {
+        console.warn('퍼펙트 자격 판정을 위한 진도 조회에 실패했습니다:', error);
+        return null;
+    }
+
+    const learnedAtById = buildLearnedAtMap(learnedRecords);
+    const learnedCount = sectionQuestions.reduce(
+        (count, item) => count + (learnedAtById.has(getQuestionProgressId(item)) ? 1 : 0),
+        0
+    );
+    const perfectStore = readSectionPerfectStore();
+
+    return {
+        stage: Number(stage) || 0,
+        section: String(sectionKey || ''),
+        totalWords: sectionQuestions.length,
+        remainingWords: Math.max(0, sectionQuestions.length - learnedCount),
+        // ★ 이 게임을 시작할 때 이미 전부 학습된 상태였는가
+        eligible: learnedCount === sectionQuestions.length,
+        legacyCompleted: isLegacyCompletedFromRecords(sectionQuestions, learnedAtById),
+        masteredAt: getSectionPerfectEntry(perfectStore, stage, sectionKey).masteredAt
+    };
+}
+
+// 결과 화면에서 한 번만 호출합니다. 게임이 끝까지 진행돼 결과가 확정된 경우에만
+// 도달하므로, 중도 종료한 게임은 streak 에 아무 영향을 주지 않습니다.
+function applySectionPerfectResult(snapshot, finalScore, totalQuestions) {
+    if (!snapshot || !snapshot.section) return { state: 'none' };
+    // 완료는 되돌릴 수 없습니다. 완료된 섹션은 갱신 자체를 하지 않습니다.
+    if (snapshot.legacyCompleted || snapshot.masteredAt > 0) return { state: 'locked' };
+    if (!snapshot.eligible) return { state: 'notEligible', remaining: snapshot.remainingWords };
+
+    const store = readSectionPerfectStore();
+    const key = makeSectionPerfectKey(snapshot.stage, snapshot.section);
+    const entry = getSectionPerfectEntry(store, snapshot.stage, snapshot.section);
+    // 일반 섹션 한 게임은 항상 10문제입니다. 10문제가 아닌 게임(내 단어장 등)은
+    // 애초에 스냅샷이 만들어지지 않지만, 방어적으로 한 번 더 확인합니다.
+    const isPerfect = Number(totalQuestions) === QUIZ_QUESTION_LIMIT
+        && Number(finalScore) === Number(totalQuestions);
+    const previousStreak = entry.perfectStreak;
+
+    if (isPerfect) {
+        entry.perfectStreak = Math.min(PERFECT_STREAK_TARGET, entry.perfectStreak + 1);
+        entry.bestPerfectStreak = Math.max(entry.bestPerfectStreak, entry.perfectStreak);
+        if (entry.perfectStreak >= PERFECT_STREAK_TARGET && entry.masteredAt === 0) {
+            entry.masteredAt = Date.now();
+        }
+    } else {
+        entry.perfectStreak = 0;
+    }
+    entry.lastGameAt = Date.now();
+    store.sections[key] = entry;
+    saveSectionPerfectStore(store);
+
+    if (entry.masteredAt > 0) {
+        // 새로 달성한 완료도 클라우드 백업 마일스톤으로 남깁니다.
+        // (기존 "25개 학습" 마일스톤과 구분되도록 milestone 값을 붙입니다)
+        window.dispatchEvent(new CustomEvent('tenten-section-completed', {
+            detail: {
+                nativeLanguage: String((window.tentenGlobal && window.tentenGlobal.interfaceLanguage) || ''),
+                learningLanguage: String((window.tentenGlobal && window.tentenGlobal.learningLanguage) || ''),
+                stage: snapshot.stage,
+                section: snapshot.section,
+                questionCount: snapshot.totalWords,
+                milestone: 'mastered'
+            }
+        }));
+        return { state: 'mastered', streak: PERFECT_STREAK_TARGET };
+    }
+    if (isPerfect) return { state: 'progress', streak: entry.perfectStreak };
+    return { state: previousStreak > 0 ? 'reset' : 'stayZero', streak: 0 };
+}
+
 async function prepareQuizSet() {
     const stage = window.selectedQuizCategory;
     const sectionKey = window.selectedQuizSection;
@@ -3443,6 +3825,9 @@ async function prepareQuizSet() {
 
     if (!keepQuestionOrder) shuffleArray(shuffledQuestions);
     TOTAL_QUESTIONS = shuffledQuestions.length;
+
+    // 퍼펙트 3연속 자격은 반드시 "게임 시작 시점" 기준으로 확정합니다.
+    currentGamePerfectSnapshot = await captureSectionPerfectSnapshot(stage, sectionKey);
 }
 
 
@@ -4095,6 +4480,9 @@ function endGame() {
         quizReturnWrap.style.display = 'none';
     }
     updateSectionTopicText();
+    const perfectSnapshot = currentGamePerfectSnapshot;
+    currentGamePerfectSnapshot = null;
+    const sectionPerfectOutcome = applySectionPerfectResult(perfectSnapshot, score, TOTAL_QUESTIONS);
     completeDailyQuizAttempt(score);
     updateResultActionButtons();
 
@@ -4110,6 +4498,7 @@ function endGame() {
     if (resultTimeLine) resultTimeLine.textContent = uiT('elapsed', { time: elapsedSeconds });
 
     showPerfectScoreCelebration(score);
+    renderPerfectStreakLine(sectionPerfectOutcome);
 
     const wrongContainer = document.getElementById('wrong-answers-container');
     const wrongListDiv = document.getElementById('wrong-list');
