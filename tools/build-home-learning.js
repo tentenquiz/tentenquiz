@@ -12,7 +12,7 @@ const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 function renderHomeLearning(slug) {
     const t = copy[slug];
-    if (!t || t.length !== 10) throw new Error(`Missing home copy: ${slug}`);
+    if (!t || t.length < 10) throw new Error(`Missing home copy: ${slug}`);
     const native = slug.replace('-', '_');
     const target = slug === 'en' ? 'ja' : 'en';
     const lang = { 'zh-cn': 'zh-Hans', 'zh-tw': 'zh-Hant' }[slug] || slug;

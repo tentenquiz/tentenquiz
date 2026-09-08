@@ -452,7 +452,10 @@
         if (!block) return;
         const slug = language.toLowerCase();
         const lang = { 'zh-cn': 'zh-Hans', 'zh-tw': 'zh-Hant' }[slug] || slug;
-        if (block.lang === lang) return;
+        const learningLanguage = window.tentenGlobal && window.tentenGlobal.learningLanguage;
+        if (!messages[learningLanguage] || learningLanguage === language) return;
+        const pair = `${language}/${learningLanguage}`;
+        if (block.dataset.languagePair === pair) return;
         try {
             const items = [...block.querySelectorAll('[data-word-id]')];
             const [copy, words] = await Promise.all([
@@ -463,11 +466,11 @@
                 }))
             ]);
             // A slower previous request must never overwrite a newer UI language.
-            if (currentLanguage() !== language || !block.isConnected) return;
+            if (currentLanguage() !== language || window.tentenGlobal.learningLanguage !== learningLanguage || !block.isConnected) return;
             const native = slug.replace('-', '_');
-            const target = slug === 'en' ? 'ja' : 'en';
+            const target = learningLanguage.toLowerCase().replace('-', '_');
             const texts = [...block.children].filter(el => /^(H2|H3|P)$/.test(el.tagName));
-            if (!copy[slug] || copy[slug].length !== texts.length || words.some(word =>
+            if (!copy[slug] || copy[slug].length < texts.length || words.some(word =>
                 !word || !word[`word_${target}`] || !word[`word_${native}`] || !word[`note_${native}`])) return;
             const node = (tag, text, className) => {
                 const el = document.createElement(tag);
@@ -475,24 +478,25 @@
                 if (className) el.className = className;
                 return el;
             };
-            texts.forEach((el, index) => { el.textContent = copy[slug][index]; });
+            texts.forEach((el, index) => { el.textContent = copy[slug][index === 7 ? 10 : index]; });
             items.forEach((item, index) => {
                 const word = words[index];
                 const line = node('p', '', 'home-learning-word');
                 const label = node('bdi', word[`word_${target}`]);
-                label.lang = target;
+                label.lang = learningLanguage;
                 line.append(label, ' ', node('span', '—'), ' ', node('bdi', word[`word_${native}`]));
                 item.replaceChildren(line);
                 const reading = word[`reading_${target}`];
                 if (reading && reading !== word[`word_${target}`]) {
                     const hint = node('p', reading, 'home-learning-reading');
-                    hint.lang = target;
+                    hint.lang = learningLanguage;
                     item.append(hint);
                 }
                 item.append(node('p', word[`note_${native}`]));
             });
             block.lang = lang;
             block.dir = slug === 'ar' ? 'rtl' : 'ltr';
+            block.dataset.languagePair = pair;
         } catch (error) {
             console.warn('Home learning translation unavailable; keeping static content.', error);
         }

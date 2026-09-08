@@ -54,29 +54,41 @@ const server = http.createServer((req, res) => {
             }
             await page.setViewportSize({ width: 320, height: 800 });
         };
+        const codeFor = slug => ({ 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW' }[slug] || slug);
         const check = async slug => {
-            await page.waitForFunction(title => document.querySelector('#home-learning-title').textContent === title, copy[slug][0]);
-            const actual = await page.locator('.home-learning').evaluate(el => ({ html: el.outerHTML, width: document.documentElement.scrollWidth, visible: el.checkVisibility(), clipped: [...el.querySelectorAll('p,li,h2,h3')].some(n => n.scrollWidth > n.clientWidth + 1) }));
-            const expected = await page.evaluate(html => {
-                const template = document.createElement('template');
-                template.innerHTML = html;
-                return template.content.querySelector('section').outerHTML;
-            }, renderHomeLearning(slug));
-            assert.equal(actual.html, expected, `${slug}: runtime equals static renderer including all eight data samples`);
-            assert.ok(actual.width <= 320 && actual.visible && !actual.clipped, JSON.stringify(actual));
+            await page.waitForFunction(() => document.querySelector('.home-learning').dataset.languagePair === window.tentenGlobal.interfaceLanguage + '/' + window.tentenGlobal.learningLanguage);
+            const target = await page.evaluate(() => window.tentenGlobal.learningLanguage.toLowerCase().replace('-', '_'));
+            const native = slug.replace('-', '_');
+            assert.equal(await page.locator('#home-learning-title').textContent(), copy[slug][0]);
+            const cards = await page.locator('.home-learning li').evaluateAll(items => items.map(item => ({ id:item.dataset.wordId, section:item.dataset.wordSection, words:[...item.querySelectorAll('bdi')].map(n=>n.textContent), reading:item.querySelector('.home-learning-reading')?.textContent || '', note:item.lastElementChild.textContent })));
+            assert.equal(cards.length,8);
+            for (const card of cards) {
+                const word = JSON.parse(fs.readFileSync(path.join(root,'data',card.section+'.json'),'utf8')).find(w=>w.id===card.id);
+                assert.deepEqual(card.words,[word['word_'+target],word['word_'+native]]);
+                assert.ok(card.words.every(w=>typeof w==='string' && w.trim() && !/undefined|null/.test(w)));
+                const reading=word['reading_'+target];
+                assert.equal(card.reading,reading && reading!==word['word_'+target]?reading:'');
+                assert.equal(card.note,word['note_'+native]);
+            }
+            assert.equal(await page.locator('.home-learning > p').nth(3).textContent(),copy[slug][10]);
         };
         await page.goto(base + '/');
         await page.waitForFunction(() => typeof activeQuizData !== 'undefined' && activeQuizData.length === 2500);
         const initial = await page.evaluate(() => window.tentenGlobal.interfaceLanguage.toLowerCase());
         await check(initial);
         console.log('PASS root startup follows current UI language');
+        let combinations=0;
         for (const slug of Object.keys(copy)) {
-            const code = { 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW' }[slug] || slug;
-            await page.evaluate(code => { window.tentenGlobal.interfaceLanguage = code; window.applyTentenI18n(); }, code);
-            await check(slug);
-            await checkCards();
-            console.log(`PASS immediate i18n update / exact data / 320px / direction: ${slug}`);
+            for (const learning of Object.keys(copy)) {
+                if (slug===learning) continue;
+                await page.evaluate(([native,target])=>{window.tentenGlobal.interfaceLanguage=native;window.tentenGlobal.learningLanguage=target;window.applyTentenI18n();},[codeFor(slug),codeFor(learning)]);
+                await check(slug);
+                await checkCards();
+                combinations++;
+            }
         }
+        assert.equal(combinations,132);
+        console.log('PASS 132 valid language pairs / exact words, readings, notes / all five widths');
         // Exercise the real UI control as well as the in-place i18n hook.
         for (const slug of Object.keys(copy)) {
             const code = { 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW' }[slug] || slug;
@@ -85,6 +97,25 @@ const server = http.createServer((req, res) => {
             await check(slug);
             console.log(`PASS user language selector: ${slug}`);
         }
+        for (const [native,target] of [['ko','ja'],['ko','en'],['en','ja'],['ja','ko']]) {
+            await page.selectOption('#interface-language-select',native);
+            await page.waitForLoadState('load');
+            await page.selectOption('#learning-language-select',target);
+            await page.waitForLoadState('load');
+            await check(native);
+            await page.reload();
+            await check(native);
+        }
+        console.log('PASS real dropdown pair transitions and reload persistence');
+        await page.route('**/locales/home-learning.json',async route=>{await new Promise(r=>setTimeout(r,400));await route.continue();});
+        await page.goto(base+'/?native=ko&learn=ja',{waitUntil:'domcontentloaded'});
+        await page.waitForFunction(()=>typeof window.applyTentenI18n==='function');
+        await page.evaluate(()=>{for(const [native,target] of [['en','ja'],['ja','ko'],['ko','en']]){window.tentenGlobal.interfaceLanguage=native;window.tentenGlobal.learningLanguage=target;window.applyTentenI18n();}});
+        await check('ko');
+        await page.waitForTimeout(500);
+        await check('ko');
+        assert.equal(await page.locator('.home-learning').getAttribute('data-language-pair'),'ko/en');
+        console.log('PASS delayed fetch / rapid pair changes retain latest pair');
         await context.close();
         const noJS = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 320, height: 800 } });
         const staticPage = await noJS.newPage();
