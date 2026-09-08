@@ -287,13 +287,13 @@ function rewriteLocalizedLinks(html, locale) {
     });
 }
 
-function injectStructuredData(html, baseUrl, locale, title, description) {
+function injectStructuredData(html, baseUrl, locale, title, description, homePath = localizedPath(locale, 'home')) {
     html = html.replace(/\s*<script\b[^>]*data-tenten-generated-schema[^>]*>[\s\S]*?<\/script>\s*/gi, '\n');
     const schema = {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'TentenQuiz',
-        url: absoluteUrl(baseUrl, localizedPath(locale, 'home')),
+        url: absoluteUrl(baseUrl, homePath),
         applicationCategory: 'EducationalApplication',
         operatingSystem: 'Web browser',
         inLanguage: locale.htmlLang,
@@ -426,6 +426,7 @@ function buildLocalizedPage({ sourceHtml, locale, pageDefinition, baseUrl, local
     html = deferHeadScripts(html);
 
     if (isHome) {
+        html = require('./build-home-learning').injectHomeLearning(html, locale.slug);
         html = translateDataI18n(html, uiMessages[locale.code]);
         html = injectStructuredData(html, baseUrl, locale, title, description);
     } else {
@@ -548,7 +549,7 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
             // (런타임 i18n 이 어차피 덮어쓰지만, JS 를 실행하지 않는 크롤러와
             //  애드센스 심사자가 보는 초기 HTML 이 영어여야 합니다.)
             next = translateDataI18n(next, uiMessages[englishLocale.code]);
-            next = injectStructuredData(next, baseUrl, englishLocale, title, description);
+            next = injectStructuredData(next, baseUrl, englishLocale, title, description, '/');
         }
         next = upsertMeta(next, 'property', 'og:locale', locale.ogLocale);
         next = injectAlternateLinks(next, buildAlternateLinks(baseUrl, locales, pageDefinition));

@@ -406,6 +406,7 @@ a:focus-visible {
 
     .legal-header-inner {
         min-height: 64px;
+        flex-wrap: wrap;
     }
 
     .legal-brand {

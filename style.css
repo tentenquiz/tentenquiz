@@ -3813,6 +3813,37 @@ html[dir="rtl"] .daily-quiz-status {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
+.home-learning {
+    margin: 28px 0 0;
+    padding: 20px;
+    border: 1px solid rgba(84, 62, 35, 0.16);
+    border-radius: 16px;
+    background: #FFFDF8;
+    color: var(--text-main);
+    text-align: start;
+    font-size: 16px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+.home-learning h2 { margin: 0 0 12px; font-size: 22px; line-height: 1.35; }
+.home-learning h3 { margin: 22px 0 8px; font-size: 18px; line-height: 1.4; }
+.home-learning p { margin: 0 0 10px; }
+.home-learning-samples {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+.home-learning-samples li { min-width: 0; padding: 12px; border-radius: 10px; background: #FBF4E8; }
+.home-learning .home-learning-word { font-weight: 800; font-size: 18px; }
+.home-learning .home-learning-reading { color: var(--text-sub); }
+@media (max-width: 480px) {
+    .home-learning { padding: 16px; }
+    .home-learning-samples { grid-template-columns: minmax(0, 1fr); }
+}
+
 .site-footer {
     margin-top: 20px;
     font-size: 13px;
