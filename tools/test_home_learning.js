@@ -17,7 +17,9 @@ for (const slug of ['', ...Object.keys(copy)]) {
         (_, open, json, close) => open + JSON.stringify({ ...JSON.parse(json), url: 'https://tentenquiz.com/' }) + close);
     assert.equal(html.split('<!-- home-learning:start -->').length,2);
     assert.ok(html.includes(renderHomeLearning(slug||'en')));
-    assert.equal(html.replace(/<!-- home-learning:start -->[\s\S]*?<!-- home-learning:end -->\n\n        /,''),baseline,'Only visible body content may change: '+file);
+    const withoutLearning = source => source.replace(/<!-- home-learning:start -->[\s\S]*?<!-- home-learning:end -->\n\n        /,'')
+        .replace('style.css?v=20260902-completion-rule-v1', 'style.css?v=20260908-home-learning-cards-v2');
+    assert.equal(withoutLearning(html),withoutLearning(baseline),'Only visible body content may change: '+file);
     for (const [section,id] of samples) {
         const item = JSON.parse(fs.readFileSync(path.join(root,'data',section+'.json'),'utf8')).find(w=>w.id===id);
         assert.ok(item && item.stage===1);

@@ -432,7 +432,74 @@
         return result;
     };
 
+    // Keep the server-rendered learning introduction as the offline/no-JS fallback.
+    const homeLearningResources = new Map();
+    function loadHomeLearningResource(url) {
+        if (!homeLearningResources.has(url)) {
+            homeLearningResources.set(url, fetch(url).then(response => {
+                if (!response.ok) throw new Error(`Home learning: ${response.status}`);
+                return response.json();
+            }).catch(error => {
+                homeLearningResources.delete(url);
+                throw error;
+            }));
+        }
+        return homeLearningResources.get(url);
+    }
+
+    async function syncHomeLearning(language) {
+        const block = document.querySelector('.home-learning');
+        if (!block) return;
+        const slug = language.toLowerCase();
+        const lang = { 'zh-cn': 'zh-Hans', 'zh-tw': 'zh-Hant' }[slug] || slug;
+        if (block.lang === lang) return;
+        try {
+            const items = [...block.querySelectorAll('[data-word-id]')];
+            const [copy, words] = await Promise.all([
+                loadHomeLearningResource('/locales/home-learning.json'),
+                Promise.all(items.map(async item => {
+                    const data = await loadHomeLearningResource(`/data/${item.dataset.wordSection}.json`);
+                    return data.find(word => word.id === item.dataset.wordId);
+                }))
+            ]);
+            // A slower previous request must never overwrite a newer UI language.
+            if (currentLanguage() !== language || !block.isConnected) return;
+            const native = slug.replace('-', '_');
+            const target = slug === 'en' ? 'ja' : 'en';
+            const texts = [...block.children].filter(el => /^(H2|H3|P)$/.test(el.tagName));
+            if (!copy[slug] || copy[slug].length !== texts.length || words.some(word =>
+                !word || !word[`word_${target}`] || !word[`word_${native}`] || !word[`note_${native}`])) return;
+            const node = (tag, text, className) => {
+                const el = document.createElement(tag);
+                el.textContent = text;
+                if (className) el.className = className;
+                return el;
+            };
+            texts.forEach((el, index) => { el.textContent = copy[slug][index]; });
+            items.forEach((item, index) => {
+                const word = words[index];
+                const line = node('p', '', 'home-learning-word');
+                const label = node('bdi', word[`word_${target}`]);
+                label.lang = target;
+                line.append(label, ' ', node('span', '—'), ' ', node('bdi', word[`word_${native}`]));
+                item.replaceChildren(line);
+                const reading = word[`reading_${target}`];
+                if (reading && reading !== word[`word_${target}`]) {
+                    const hint = node('p', reading, 'home-learning-reading');
+                    hint.lang = target;
+                    item.append(hint);
+                }
+                item.append(node('p', word[`note_${native}`]));
+            });
+            block.lang = lang;
+            block.dir = slug === 'ar' ? 'rtl' : 'ltr';
+        } catch (error) {
+            console.warn('Home learning translation unavailable; keeping static content.', error);
+        }
+    }
+
     window.applyTentenI18n = function applyTentenI18n(root = document) {
+        void syncHomeLearning(currentLanguage());
         root.querySelectorAll('[data-i18n]').forEach((element) => {
             element.textContent = window.tentenT(element.dataset.i18n);
         });
