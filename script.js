@@ -187,12 +187,12 @@ function renderPerfectStreakLine(sectionOutcome) {
     // 오늘의 퀴즈는 자체 진행도를 배너에서 보여 주므로 결과 화면에서도 같은 문법을 씁니다.
     if (window.selectedQuizSection === VIRTUAL_SECTION_DAILY) {
         const session = activeDailyQuizSession || readDailyQuizSession();
-        if (!session || !session.all12Exposed) return;
+        if (!session) return;
         if (session.cleared) {
             line.textContent = uiT('dailyQuizClear');
             line.classList.add('is-mastered');
         } else {
-            line.textContent = uiT('perfectProgress', {
+            line.textContent = uiT('dailyQuizClearProgress', {
                 count: getDailyPerfectStreak(session),
                 total: PERFECT_STREAK_TARGET
             });
@@ -567,8 +567,7 @@ function getDailyPerfectStreak(session) {
     for (let index = games.length - 1; index >= 0; index -= 1) {
         const game = games[index];
         if (!game) break;
-        // 12개를 모두 학습하기 전에 치른 게임은 숙달 streak 대상이 아닙니다.
-        if (game.allWordsExposedAtStart !== true) continue;
+        // 첫 게임부터 집계합니다. 단어 노출 여부는 출제 다양성에만 사용합니다.
         if (Number(game.score) !== DAILY_QUIZ_GAME_QUESTION_COUNT) break;
         streak += 1;
         if (streak >= PERFECT_STREAK_TARGET) break;
@@ -1247,6 +1246,7 @@ function recordDailyQuizAchievement(date = new Date(), options = {}) {
                 allWordsExposed: options.allWordsExposed === true,
                 allWordsExposedAtGameStart: options.allWordsExposedAtGameStart === true,
                 perfectGame: options.perfectGame === true,
+                consecutiveClears: Math.max(0, Number(options.consecutiveClears) || 0),
                 questionCount,
                 score: questionCount
             }
@@ -1476,9 +1476,10 @@ function readDailyQuizSession() {
         completedAt: Math.max(0, Number(game.completedAt) || 0)
     }));
     const perfectGame = legacyCompleted || completedGames.some((game) => (
-        game.allWordsExposedAtStart && game.score === DAILY_QUIZ_GAME_QUESTION_COUNT
+        game.score === DAILY_QUIZ_GAME_QUESTION_COUNT
     ));
-    if (session.cleared && !legacyCompleted && (!all12Exposed || !perfectGame)) return null;
+    // 기존 완료 기록은 보존하되, 새 완료 기록도 단어 노출 여부로 무효화하지 않습니다.
+    if (session.cleared && !legacyCompleted && !perfectGame) return null;
     if (
         legacyCompleted &&
         (
@@ -1524,25 +1525,46 @@ function takeOrderedDailyItems(source, count, usedKeys) {
     return picked;
 }
 
+function getDailyQuizMaxAllowedStage(progressRecords) {
+    const learnedAtById = buildLearnedAtMap(progressRecords);
+    const perfectStore = readSectionPerfectStore();
+    let highestConsecutiveStage = 0;
+    for (let stage = 1; stage <= 10; stage += 1) {
+        // Completion must use the full curriculum, before filtering daily candidates.
+        const stageQuestions = activeQuizData.filter((item) => Number(item.stage) === stage);
+        const sectionsWithQuestions = getAvailableSectionsByStage(String(stage))
+            .map((section) => ({ key: section.key, questions: getUniqueSectionQuestions(stage, section.key) }));
+        if (!isStageCompleted(stageQuestions, sectionsWithQuestions, learnedAtById, perfectStore, stage)) break;
+        highestConsecutiveStage = stage;
+    }
+    return Math.min(highestConsecutiveStage + 1, 10);
+}
+
 async function loadDailyQuizCandidateContext() {
     let wrongRecords = [];
     let wordbookRecords = [];
     let progressRecords = [];
+    let recordsLoaded = false;
     try {
         [wrongRecords, wordbookRecords, progressRecords] = await Promise.all([
             dbGetAll(STORE_WRONG),
             dbGetAll(STORE_WORDBOOK),
             dbGetAll(STORE_PROGRESS)
         ]);
+        recordsLoaded = true;
     } catch (error) {
         console.warn('오늘의 퀴즈 복습 기록을 불러오지 못해 기본 문제로 구성합니다:', error);
     }
 
+    const maxAllowedStage = recordsLoaded ? getDailyQuizMaxAllowedStage(progressRecords) : 1;
+    const eligibleQuizData = activeQuizData.filter((item) => (
+        Number.isInteger(Number(item.stage)) && Number(item.stage) >= 1 && Number(item.stage) <= maxAllowedStage
+    ));
     const activeByQuestionKey = new Map(
-        activeQuizData.map((item) => [getDailyQuizQuestionKey(item), item])
+        eligibleQuizData.map((item) => [getDailyQuizQuestionKey(item), item])
     );
     const activeByUniqueKey = new Map(
-        activeQuizData.map((item) => [getItemUniqueKey(item), item])
+        eligibleQuizData.map((item) => [getItemUniqueKey(item), item])
     );
     const reconnectToActiveQuestion = (record) => {
         const connected = reconnectStoredQuizItem(record);
@@ -1562,7 +1584,7 @@ async function loadDailyQuizCandidateContext() {
         .map(reconnectToActiveQuestion)
         .filter(Boolean);
     const progressById = new Map(progressRecords.map((record) => [String(record.id || ''), record]));
-    const learnedPool = activeQuizData
+    const learnedPool = eligibleQuizData
         .map((item) => ({ item, progress: progressById.get(getQuestionProgressId(item)) }))
         .filter((entry) => entry.progress);
     const duePool = learnedPool
@@ -1577,7 +1599,7 @@ async function loadDailyQuizCandidateContext() {
     const recordedQuestionKeys = new Set(
         [...wrongPool, ...wordbookPool].map(getDailyQuizQuestionKey)
     );
-    const newPool = activeQuizData.filter((item) => (
+    const newPool = eligibleQuizData.filter((item) => (
         !recordedQuestionKeys.has(getDailyQuizQuestionKey(item)) &&
         !progressById.has(getQuestionProgressId(item))
     ));
@@ -1588,8 +1610,8 @@ async function loadDailyQuizCandidateContext() {
         confidencePool,
         newPool,
         newStageOnePool: newPool.filter((item) => Number(item.stage) === 1),
-        stageOnePool: activeQuizData.filter((item) => Number(item.stage) === 1),
-        allPool: activeQuizData
+        stageOnePool: eligibleQuizData.filter((item) => Number(item.stage) === 1),
+        allPool: eligibleQuizData
     };
 }
 
@@ -1886,16 +1908,9 @@ function updateDailyQuizBanner() {
             count: Math.max(streak, Number(achievement.bestStreak) || 1)
         });
     } else if (session?.currentGame?.completed) {
-        if (session.all12Exposed) {
-            button.classList.add('is-perfect-target');
-            status.textContent = uiT('dailyQuizRetryAction');
-            subtitle.textContent = uiT('dailyQuizPerfectPrompt');
-        } else {
-            button.classList.add('is-learning');
-            const remaining = getDailyQuizRemainingWordCount(session);
-            status.textContent = uiT('dailyQuizContinueLearning');
-            subtitle.textContent = uiT('dailyQuizWordsRemaining', { count: remaining });
-        }
+        button.classList.add('is-perfect-target');
+        status.textContent = uiT('dailyQuizRetryAction');
+        subtitle.textContent = uiT('dailyQuizPerfectPrompt');
     } else if (session?.currentGame?.results?.length) {
         const questionCount = getDailyQuizSessionQuestionCount(session);
         status.textContent = uiT('dailyQuizContinue', {
@@ -1910,17 +1925,19 @@ function updateDailyQuizBanner() {
             : uiT('dailyQuizNextStreakChallenge', { count: target });
         renderDailyQuizStartSubtitle(subtitle);
     }
-    // 12개를 모두 학습한 뒤부터 퍼펙트 진행도를 한 줄로 덧붙입니다.
+    // 첫 게임부터 연속 클리어 진행도를 보여 줍니다.
     // (연속 "일수" 기록은 status 영역에 그대로 두어 서로 혼동되지 않게 합니다)
-    if (detail && session && !session.cleared && session.all12Exposed) {
+    if (detail && session && !session.cleared) {
         detail.hidden = false;
-        detail.textContent = uiT('perfectProgress', {
+        detail.textContent = uiT('dailyQuizClearProgress', {
             count: getDailyPerfectStreak(session),
             total: PERFECT_STREAK_TARGET
         });
     }
 
-    button.setAttribute('aria-label', `${uiT('dailyQuizTitle')} · ${status.textContent}`);
+    button.setAttribute('title', uiT('dailyQuizRules'));
+    button.setAttribute('aria-description', uiT('dailyQuizRules'));
+    button.setAttribute('aria-label', `${uiT('dailyQuizTitle')} · ${status.textContent}${detail && !detail.hidden ? ` · ${detail.textContent}` : ''}`);
     startDailyQuizBannerCelebration(button, Boolean(session?.cleared));
 }
 
@@ -2074,17 +2091,13 @@ function completeDailyQuizAttempt(finalScore) {
     session.all12Exposed = session.dailyWordKeys.every(
         (key) => Number(session.wordStats[key]?.exposureCount || 0) > 0
     );
-    const qualifiesForCompletion = Boolean(
-        session.currentGame.allWordsExposedAtStart === true
-        && session.lastScore === DAILY_QUIZ_GAME_QUESTION_COUNT
-    );
+    const qualifiesForCompletion = session.lastScore === DAILY_QUIZ_GAME_QUESTION_COUNT;
     // perfectGame 은 readDailyQuizSession() 의 기존 무결성 검사가 쓰는 값입니다.
     // 여기 의미(퍼펙트 1회 이상)를 3연속으로 바꾸면, 옛 규칙으로 이미 완료한
     // 오늘 세션이 invalid 로 판정돼 그날 진행이 통째로 사라집니다. 그대로 둡니다.
     session.perfectGame = Boolean(session.perfectGame || qualifiesForCompletion);
     // 새로 완료가 발생하는 조건만 "3회 연속 퍼펙트" 로 바꿉니다.
     const clearedNow = !session.cleared
-        && session.all12Exposed
         && getDailyPerfectStreak(session) >= PERFECT_STREAK_TARGET;
     if (clearedNow) {
         session.cleared = true;
@@ -2094,9 +2107,10 @@ function completeDailyQuizAttempt(finalScore) {
     if (clearedNow) {
         recordDailyQuizAchievement(new Date(session.clearedAt), {
             dailyWordCount: DAILY_QUIZ_WORD_COUNT,
-            allWordsExposed: true,
-            allWordsExposedAtGameStart: true,
+            allWordsExposed: session.all12Exposed,
+            allWordsExposedAtGameStart: session.currentGame.allWordsExposedAtStart === true,
             perfectGame: true,
+            consecutiveClears: getDailyPerfectStreak(session),
             questionCount: DAILY_QUIZ_GAME_QUESTION_COUNT,
             dispatch: !session.legacyCompleted
         });

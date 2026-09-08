@@ -66,7 +66,9 @@ function browserExecutable() {
         const executablePath = browserExecutable();
         if (!executablePath) throw new Error('No Chromium-based browser is available');
         browser = await chromium.launch({ headless: true, executablePath });
-        const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
+        const context = await browser.newContext({ viewport: { width: 320, height: 800 } });
+        await context.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1'
+            ? route.continue() : route.abort());
         await context.addInitScript(() => {
             Object.defineProperty(navigator, 'share', {
                 configurable: true,
@@ -83,7 +85,19 @@ function browserExecutable() {
                 const card = document.getElementById('result-card');
                 card.style.display = 'block';
                 const bounds = button.getBoundingClientRect();
+                const label = button.querySelector('[data-i18n="shareResult"]');
+                const range = document.createRange();
+                range.selectNodeContents(label);
+                const textBounds = range.getBoundingClientRect();
+                const shareStyle = getComputedStyle(button);
+                const retryStyle = getComputedStyle(document.getElementById('restart-stage-btn'));
+                const backStyle = getComputedStyle(document.getElementById('result-back-same-top-btn'));
                 return {
+                    matchingType: [retryStyle, backStyle].every(s => s.fontSize === shareStyle.fontSize && s.fontWeight === shareStyle.fontWeight),
+                    fontSize: shareStyle.fontSize,
+                    fontWeight: shareStyle.fontWeight,
+                    textFits: textBounds.left >= bounds.left && textBounds.right <= bounds.right,
+                    oneLine: textBounds.height <= parseFloat(getComputedStyle(label).fontSize) * 1.8,
                     buttonText: button.textContent.trim(),
                     buttonHeight: bounds.height,
                     buttonLeft: bounds.left,
@@ -95,6 +109,12 @@ function browserExecutable() {
             });
             const code = await page.evaluate(() => window.__TENTEN_STATIC_INTERFACE_LANGUAGE__);
             assert(state.buttonText === messages[code].shareResult, `Wrong share label for ${slug}`);
+            assert(state.buttonText.startsWith('🔗 '), `Missing link icon for ${slug}`);
+            assert(state.matchingType, `Share typography differs from adjacent actions for ${slug}`);
+            console.log(`PASS ${slug}: ${state.buttonText}, ${state.fontSize}/${state.fontWeight}`);
+            assert(state.textFits && state.oneLine, `Share label wraps or clips for ${slug}`);
+            await page.locator('#share-result-btn').click();
+            await page.waitForFunction(() => Boolean(window.__sharePayload));
             assert(state.buttonHeight >= 54, `Share button is too short for ${slug}`);
             assert(state.buttonLeft >= 0 && state.buttonRight <= state.viewportWidth, `Share button overflows at 360px for ${slug}`);
             assert(state.languagePanelMarginTop === '0px', `Language panel top gap returned for ${slug}`);
@@ -154,7 +174,7 @@ function browserExecutable() {
             }
         }
 
-        console.log('OK: all 12 localized share buttons fit a 360px viewport');
+        console.log('OK: all 12 localized share buttons fit one line at 320px and clicks invoke sharing');
         console.log('OK: all 12 localized pages reference their matching social card');
         console.log('OK: native sharing uses the official clean domain and preserves Chinese reading when needed');
         console.log('OK: all 12 PWA interface languages share matching text and preview metadata');

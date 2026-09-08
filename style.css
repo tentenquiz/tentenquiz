@@ -3799,6 +3799,11 @@ html[dir="rtl"] .daily-quiz-status {
     white-space: nowrap;
 }
 
+#share-result-btn {
+    /* Match the adjacent retry/back-to-sections primary actions. */
+    font-weight: 800;
+}
+
 .result-share-btn {
     width: 100%;
     box-sizing: border-box;

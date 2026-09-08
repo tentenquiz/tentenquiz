@@ -3,7 +3,7 @@
 //
 // 검증 범위
 //   · 일반 섹션 : 25개 학습 + "시작 시점에 이미 전부 학습된" 게임에서 10/10 3회 연속
-//   · 오늘의 퀴즈 : 12개 학습 + 같은 방식의 3회 연속 (session.games[] 파생 계산)
+//   · 오늘의 퀴즈 : 노출 여부와 무관하게 첫 게임부터 3회 연속 (session.games[] 파생 계산)
 //   · 스테이지   : 소속 섹션이 모두 완료
 //   · 레거시     : 규칙 변경 시각 이전에 학습을 마친 섹션/스테이지는 완료 유지(M4)
 //   · 백업       : sectionPerfect 왕복 보존 / 구버전 백업 호환 / 병합
@@ -215,11 +215,11 @@ function game(score, exposed) {
 }
 {
     const { win } = loadApp();
-    check('A. 12개 미노출 상태의 게임들 → 숙달 streak 0',
-        win.getDailyPerfectStreak({ games: [game(10, false), game(10, false)] }) === 0);
-    check('B. 시작 시 11/12 · 게임 중 12번째 학습 · 10/10 → 인정 안 함',
-        win.getDailyPerfectStreak({ games: [game(10, false)] }) === 0);
-    check('C. 자격 있는 10/10 → 1', win.getDailyPerfectStreak({ games: [game(10, false), game(10, true)] }) === 1);
+    check('A. 12개 미노출 상태에서도 연속 2회 → 2',
+        win.getDailyPerfectStreak({ games: [game(10, false), game(10, false)] }) === 2);
+    check('B. 시작 시 미노출 단어가 있어도 10/10 → 1',
+        win.getDailyPerfectStreak({ games: [game(10, false)] }) === 1);
+    check('C. 노출 상태가 달라도 연속 10/10 → 2', win.getDailyPerfectStreak({ games: [game(10, false), game(10, true)] }) === 2);
     check('D. 연속 2회 → 2', win.getDailyPerfectStreak({ games: [game(10, true), game(10, true)] }) === 2);
     check('E. 연속 3회 → 3', win.getDailyPerfectStreak({ games: [game(10, true), game(10, true), game(10, true)] }) === 3);
     check('F. 10 → 10 → 9 → 0', win.getDailyPerfectStreak({ games: [game(10, true), game(10, true), game(9, true)] }) === 0);
@@ -304,6 +304,83 @@ function game(score, exposed) {
 }
 
 // =====================================================================
+
+// A~E: 실제 완료 함수, 저장/복원, 출제 함수의 통합 회귀 검증.
+function dailyFixture() {
+    const app = loadApp();
+    const keys = Array.from({ length: 12 }, (_, i) => `daily${i}`);
+    const session = {
+        version: 2, dateKey: app.win.getDailyQuizDateKey(), dailyWordKeys: keys,
+        wordStats: app.win.createDailyQuizWordStats(keys), games: [],
+        all12Exposed: false, perfectGame: false, cleared: false, attempts: 0,
+        createdAt: Date.now()
+    };
+    app.win.selectedQuizSection = 'daily_quiz';
+    app.events = [];
+    app.win.dispatchEvent = (event) => { app.events.push(event); return true; };
+    app.win.createDailyQuizGame(session);
+    app.win.saveDailyQuizSession(session);
+    app.play = (score, forcedKeys) => {
+        const current = app.win.readDailyQuizSession();
+        if (current.currentGame.completed) app.win.createDailyQuizGame(current);
+        if (forcedKeys) current.currentGame.questionKeys = forcedKeys.slice();
+        app.win.saveDailyQuizSession(current);
+        current.currentGame.questionKeys.forEach((key) => {
+            app.win.markDailyQuizQuestionShown({ id: key });
+        });
+        current.currentGame.results = current.currentGame.questionKeys.map((key, i) => ({
+            questionKey: key, status: i < score ? 'correct' : 'wrong'
+        }));
+        app.win.saveDailyQuizSession(current);
+        app.win.completeDailyQuizAttempt(score);
+        return app.win.readDailyQuizSession();
+    };
+    return app;
+}
+{
+    const app = dailyFixture();
+    const results = [app.play(10), app.play(10), app.play(10)];
+    check('시나리오 A: 첫 3게임 1/3 → 2/3 → 3/3 완료',
+        results.every((s, i) => app.win.getDailyPerfectStreak(s) === i + 1 && s.cleared === (i === 2)));
+    check('완료 이벤트는 3게임째 한 번만 발생', app.events.length === 1 && app.events[0].detail.consecutiveClears === 3);
+    app.win.completeDailyQuizAttempt(10);
+    check('완료 중복 호출은 게임/달성 이벤트를 늘리지 않음', app.events.length === 1 && app.win.readDailyQuizSession().games.length === 3);
+    const fresh = loadApp();
+    for (const [key, value] of app.storage.store) fresh.storage.store.set(key, value);
+    check('새 앱 컨텍스트에서도 완료와 3/3 복원', fresh.win.readDailyQuizSession().cleared && fresh.win.getDailyPerfectStreak(fresh.win.readDailyQuizSession()) === 3);
+    const exposures = Object.values(results[2].wordStats).map((s) => s.exposureCount);
+    check('시나리오 E: 3게임 30문제, 12개 모두 출제, 노출 차이 최대 1',
+        exposures.reduce((a, b) => a + b, 0) === 30 && Math.min(...exposures) === 2 && Math.max(...exposures) === 3);
+}
+{
+    const app = dailyFixture();
+    const a = app.play(10), b = app.play(9), c = app.play(10);
+    check('시나리오 B: 성공 → 실패 → 성공 = 1/3 → 0/3 → 1/3',
+        [a, b, c].map((s) => app.win.getDailyPerfectStreak(s)).join(',') === '1,0,1' && !c.cleared && app.events.length === 0);
+    check('시나리오 D: 12개 모두 노출되어도 3연속 없으면 미완료', c.all12Exposed && !c.cleared);
+    const fresh = loadApp();
+    for (const [key, value] of app.storage.store) fresh.storage.store.set(key, value);
+    check('미완료 연속 횟수도 새 앱 컨텍스트에서 유지', fresh.win.getDailyPerfectStreak(fresh.win.readDailyQuizSession()) === 1);
+}
+{
+    const app = dailyFixture();
+    const ten = app.win.readDailyQuizSession().dailyWordKeys.slice(0, 10);
+    app.play(10, ten); app.play(10, ten);
+    const done = app.play(10, ten);
+    check('시나리오 C: 2개 단어가 한 번도 나오지 않아도 3게임만에 완료',
+        done && !done.all12Exposed && done.cleared && done.games.length === 3 && app.win.getDailyPerfectStreak(done) === 3);
+    check('C 완료 이벤트는 노출 여부를 사실대로 전달',
+        app.events.length === 1 && app.events[0].detail.allWordsExposed === false && app.events[0].detail.allWordsExposedAtGameStart === false);
+    const fresh = loadApp();
+    for (const [key, value] of app.storage.store) fresh.storage.store.set(key, value);
+    check('C 완료는 새로고침 후에도 무효화되지 않음', fresh.win.readDailyQuizSession()?.cleared === true);
+}
+{
+    const { win } = loadApp();
+    check('노출 전 실패 게임도 연속 기록을 끊음',
+        win.getDailyPerfectStreak({ games: [game(10, true), game(9, false), game(10, false)] }) === 1);
+}
+
 console.log('\n[스테이지]');
 // =====================================================================
 {

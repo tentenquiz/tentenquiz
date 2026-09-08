@@ -939,8 +939,7 @@
         const learningLanguage = String(detail.learningLanguage || '');
         const dateKey = String(detail.dateKey || '');
         const dailyWordCount = Number(detail.dailyWordCount);
-        const allWordsExposed = detail.allWordsExposed === true;
-        const allWordsExposedAtGameStart = detail.allWordsExposedAtGameStart === true;
+        const consecutiveClears = Number(detail.consecutiveClears);
         const perfectGame = detail.perfectGame === true;
         const questionCount = Number(detail.questionCount);
         const score = Number(detail.score);
@@ -950,7 +949,7 @@
             !nativeLanguage || !learningLanguage || nativeLanguage === learningLanguage
             || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)
             || !Number.isInteger(dailyWordCount) || dailyWordCount !== expectedDailyWordCount
-            || !allWordsExposed || !allWordsExposedAtGameStart || !perfectGame
+            || !Number.isInteger(consecutiveClears) || consecutiveClears < 3 || !perfectGame
             || !Number.isInteger(questionCount) || questionCount !== expectedQuestionCount
             || score !== questionCount
         ) return '';
