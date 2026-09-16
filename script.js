@@ -3055,6 +3055,45 @@ let quizSessionMode = '';
 let quizSessionCategory = null;
 let wordbookResultRenderToken = 0;
 
+// Tracking-only state; never changes quiz or learning records.
+const quizTrackingSeen = new Set();
+function trackQuizEvent(event, isCorrect) {
+    try {
+        if (quizSessionMode === VIRTUAL_SECTION_WORDBOOK || TOTAL_QUESTIONS <= 0) return;
+        if (!window.dataLayer || typeof window.dataLayer.push !== 'function') return;
+        if (event === 'quiz_complete' && currentIdx < TOTAL_QUESTIONS) return;
+        const runtime = window.tentenGlobal || {};
+        const daily = quizSessionMode === VIRTUAL_SECTION_DAILY;
+        const game = activeDailyQuizSession?.currentGame;
+        const gameKey = daily ? JSON.stringify([
+            runtime.learningLanguage, runtime.interfaceLanguage, activeDailyQuizSession?.dateKey,
+            game?.gameNumber, game?.startedAt
+        ]) : String(quizFlowToken);
+        const eventKey = event === 'answer_select' ? `${event}:${currentIdx}` : event;
+        const key = `${gameKey}:${eventKey}`;
+        if (quizTrackingSeen.has(key)) return;
+        const storageKey = `tenten.quizTracking.v1:${gameKey}`;
+        let saved = [];
+        try {
+            if (daily) saved = JSON.parse(window.sessionStorage.getItem(storageKey) || '[]');
+        } catch (_) { /* Storage is optional for tracking. */ }
+        if (!Array.isArray(saved)) saved = [];
+        if (daily && saved.includes(eventKey)) return;
+        quizTrackingSeen.add(key);
+        try {
+            if (daily) window.sessionStorage.setItem(storageKey, JSON.stringify([...saved, eventKey]));
+        } catch (_) { /* In-memory deduplication remains available. */ }
+        if (event === 'quiz_start' && daily && currentIdx > 0) return;
+        const params = {
+            event, learning_language: runtime.learningLanguage, interface_language: runtime.interfaceLanguage,
+            section: quizSessionMode, stage: daily ? undefined : (quizSessionCategory || undefined)
+        };
+        if (event === 'answer_select') Object.assign(params, { question_number: currentIdx + 1, is_correct: isCorrect });
+        if (event === 'quiz_complete') Object.assign(params, { score, total_questions: TOTAL_QUESTIONS });
+        window.dataLayer.push(params);
+    } catch (_) { /* Analytics must never interrupt the quiz. */ }
+}
+
 function updateWordbookSessionStreak(item, wasCorrect, meaning) {
     if (window.selectedQuizSection !== VIRTUAL_SECTION_WORDBOOK || !item) return;
     const key = makeItemId(item.stage || window.selectedQuizCategory || 1, item.reading || item.hanzi || '', meaning || item.meaning || '');
@@ -4350,6 +4389,7 @@ async function checkAnswer(selectedIdx) {
     const selectedText = selectedButton.getAttribute('data-text');
 
     const q = shuffledQuestions[currentIdx];
+    trackQuizEvent('answer_select', selectedText === currentCorrectText);
     await recordQuestionAsLearned(q);
     if (flowToken !== quizFlowToken || !isQuizNavigationScreenCurrent('quiz')) return;
     const stage = q.stage || window.selectedQuizCategory || 1;
@@ -4601,6 +4641,7 @@ function endGame() {
 
     syncWordbookButtons();
     if (quizSessionMode === VIRTUAL_SECTION_WORDBOOK) void renderWordbookLearningResult(quizSessionCategory, renderToken);
+    trackQuizEvent('quiz_complete');
 }
 
 
@@ -4699,6 +4740,7 @@ async function restartQuiz(operationToken = quizNavigationOperationToken) {
 
     loadQuiz();
     startQuestionTimer();
+    trackQuizEvent('quiz_start');
     return true;
 }
 
