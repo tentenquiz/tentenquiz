@@ -523,7 +523,7 @@ function rewriteLegacyLinks(html) {
     });
 }
 
-function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessages) {
+function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessages, localePathMap) {
     const englishLocale = locales.find((locale) => locale.code === 'en');
     const koreanLocale = locales.find((locale) => locale.code === 'ko');
     if (!englishLocale) throw new Error('The en locale is required for the root (x-default) page');
@@ -559,6 +559,15 @@ function updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessage
         }
         next = upsertMeta(next, 'property', 'og:locale', locale.ogLocale);
         next = injectAlternateLinks(next, buildAlternateLinks(baseUrl, locales, pageDefinition));
+        // 홈은 기존 정책(x-default=영어) 그대로 두고 손대지 않습니다. about/guide/
+        // contact/privacy/terms 는 한국어 원본이 고정이어야 하는데, 이 static
+        // locale bootstrap이 없으면 content-pages.js가 브라우저 언어/localStorage
+        // 순으로 언어를 다시 판단해 영어 등으로 재렌더링될 수 있었습니다
+        // (Search Console: /guide의 Google 선택 canonical이 /guide 대신 엉뚱하게
+        // 잡히는 원인). 페이지별 outputs(/en/guide/ 등)와 동일한 함수를 재사용합니다.
+        if (!isHome) {
+            next = injectStaticLocaleBootstrap(next, locale, localePathMap);
+        }
         next = upsertMeta(next, 'property', 'og:url', absoluteUrl(baseUrl, pageDefinition.legacyPath));
         // 소스에 하드코딩된 canonical(/about.html 등)이 308 대상을 가리키지 않도록 덮어씁니다.
         next = upsertCanonical(next, absoluteUrl(baseUrl, pageDefinition.legacyPath));
@@ -624,7 +633,7 @@ function main() {
         }
     }
 
-    updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessages);
+    updateLegacySourceAlternates(baseUrl, locales, adsenseClient, uiMessages, localePathMap);
 
     let generatedCount = 0;
     for (const locale of locales) {
