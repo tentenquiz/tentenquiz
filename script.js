@@ -352,6 +352,12 @@ function bindStaticUiEvents() {
         const removeWordbookButton = target.closest('.js-action-wordbook-remove');
         if (removeWordbookButton instanceof HTMLButtonElement) {
             removeFromWordbookAndRefresh(removeWordbookButton);
+            return;
+        }
+
+        const wordCard = target.closest('.js-action-word-card-speak');
+        if (wordCard instanceof HTMLElement) {
+            speakChinese(wordCard.dataset.hanzi || '', wordCard.dataset.section || '', wordCard.dataset.audioFile || '');
         }
     });
 }
@@ -2370,11 +2376,14 @@ async function renderSectionButtons() {
             descEl.innerHTML = `<b>${escapeHtml(uiT('learnedSummary', { learned: totalLearnedCount, remaining: totalRemainingCount }))}</b>`;
         }
         if (backBtn) backBtn.style.display = 'inline-block';
+        renderStagePreview(selectedStage, sections);
         return;
     }
 
     // ---- 스테이지 선택 단계 (기존과 동일) ----
     if (bannerEl) { bannerEl.style.display = 'none'; bannerEl.innerHTML = ''; }
+    const stagePreviewAccordion = document.getElementById('stage-preview-accordion');
+    if (stagePreviewAccordion) stagePreviewAccordion.style.display = 'none';
 
     const stages = getAvailableStages();
     const stageEmojis = ['🌱', '🐣', '📖', '✏️', '💬', '🧠', '🔥', '⭐', '🏆', '👑'];
@@ -2451,6 +2460,127 @@ async function renderSectionButtons() {
     if (backBtn) backBtn.style.display = 'none';
 }
 
+// 섹션 선택 화면의 "이 스테이지 단어 미리보기" 아코디언 내용을 채웁니다.
+// 이미 메모리에 있는 activeQuizData(현재 선택한 언어쌍으로 이미 변환된 데이터)를
+// 그대로 재사용하므로 추가 네트워크 요청이 없습니다. 섹션 버튼 클릭 → 퀴즈 시작
+// 흐름과는 별개로, 기본은 접힌 상태이고 눌러야만 채워집니다.
+function renderStagePreview(stageKey, sections) {
+    const accordion = document.getElementById('stage-preview-accordion');
+    const content = document.getElementById('stage-preview-content');
+    if (!accordion || !content) return;
+
+    const availableSections = sections.filter((section) => getUniqueSectionQuestions(stageKey, section.key).length > 0);
+    if (availableSections.length === 0) {
+        content.innerHTML = '';
+        accordion.style.display = 'none';
+        return;
+    }
+
+    accordion.style.display = 'block';
+    accordion.dataset.stage = String(stageKey);
+
+    const pickerHtml = availableSections.map((section, index) => (
+        `<button type="button" class="stage-preview-picker-btn${index === 0 ? ' is-active' : ''}" data-section-key="${escapeHtml(section.key)}" aria-pressed="${index === 0 ? 'true' : 'false'}">${escapeHtml(section.emoji || '')} ${escapeHtml(section.label)}</button>`
+    )).join('');
+
+    content.innerHTML = `<div class="stage-preview-picker">${pickerHtml}</div><div id="stage-preview-words" class="stage-preview-grid"></div>`;
+
+    renderStagePreviewWords(stageKey, availableSections[0].key);
+    bindStagePreviewEvents();
+}
+
+// 아코디언 안에서 섹션 버튼 하나를 고르면, 그 섹션의 단어만 다시 그립니다.
+function renderStagePreviewWords(stageKey, sectionKey) {
+    const wordsContainer = document.getElementById('stage-preview-words');
+    if (!wordsContainer) return;
+    const words = getUniqueSectionQuestions(stageKey, sectionKey);
+    wordsContainer.innerHTML = words.map((item) => buildStagePreviewWordItem(item, sectionKey)).join('');
+}
+
+// 결과 화면의 오답/정답 카드(.wrong-item, .note-speak-btn 등)와 같은 스타일을
+// 그대로 재사용해 발음 듣기 버튼까지 포함한 단어 카드를 만듭니다.
+function buildStagePreviewWordItem(item, sectionKey) {
+    const reading = String(item.reading || item.pinyin || '').trim();
+    const headword = String(item.hanzi || '').trim();
+    const pronunciationBracket = reading && reading.toLocaleLowerCase() !== headword.toLocaleLowerCase()
+        ? `[${escapeHtml(reading)}]`
+        : '';
+    const headlineHtml = buildWordHeadlineHtml({
+        leadingIcon: '📍',
+        hanzi: headword,
+        speakHanzi: item.reading || item.hanzi,
+        pronunciationBracket,
+        meaning: item.meaning,
+        audioFile: item.audioFile,
+        section: sectionKey
+    });
+    const noteHtml = item.note ? buildNoteTextHtml(escapeHtml(item.note)) : '';
+    const speakHanzi = item.reading || item.hanzi;
+    return `<div class="wrong-item stage-preview-item${wordCardSpeakClass(item.audioFile)}"${wordCardSpeakDataHtml(speakHanzi, sectionKey, item.audioFile)}>${headlineHtml}${noteHtml}</div>`;
+}
+
+let stagePreviewEventsBound = false;
+function bindStagePreviewEvents() {
+    if (stagePreviewEventsBound) return;
+    stagePreviewEventsBound = true;
+    const accordion = document.getElementById('stage-preview-accordion');
+    if (!accordion) return;
+
+    accordion.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+
+        const pickerBtn = target.closest('.stage-preview-picker-btn');
+        if (pickerBtn instanceof HTMLButtonElement) {
+            const stageKey = accordion.dataset.stage || '1';
+            accordion.querySelectorAll('.stage-preview-picker-btn').forEach((btn) => {
+                btn.classList.remove('is-active');
+                btn.setAttribute('aria-pressed', 'false');
+            });
+            pickerBtn.classList.add('is-active');
+            pickerBtn.setAttribute('aria-pressed', 'true');
+            renderStagePreviewWords(stageKey, pickerBtn.dataset.sectionKey || '');
+            return;
+        }
+
+        const speakEl = target.closest('.js-action-note-speak-word');
+        if (speakEl instanceof HTMLElement) {
+            speakChinese(speakEl.dataset.hanzi || '', speakEl.dataset.section || '', speakEl.dataset.audioFile || '');
+            return;
+        }
+
+        const wordCard = target.closest('.js-action-word-card-speak');
+        if (wordCard instanceof HTMLElement) {
+            speakChinese(wordCard.dataset.hanzi || '', wordCard.dataset.section || '', wordCard.dataset.audioFile || '');
+        }
+    });
+}
+
+// 퀴즈 화면 아래에 항상 떠 있는 정적 "생활 단어" 예시 블록을, 지금 실제로
+// 풀고 있는 섹션의 단어로 바꿔치기합니다. 빌드 시점 고정 샘플(8개, 여러 섹션 혼합)은
+// 크롤러가 처음 보는 기본값으로 그대로 남고, 실제 사용자가 섹션을 골라 퀴즈를
+// 시작하는 순간부터만 이 함수가 그 섹션의 단어로 화면을 갱신합니다.
+function renderHomeLearningActiveSection(stageKey, sectionKey, sectionLabel) {
+    const list = document.getElementById('home-learning-samples');
+    if (!list) return;
+    const words = getUniqueSectionQuestions(stageKey, sectionKey);
+    if (words.length === 0) return;
+
+    const learningLanguage = (window.tentenGlobal && window.tentenGlobal.learningLanguage) || '';
+    list.innerHTML = words.map((item) => {
+        const reading = String(item.reading || item.pinyin || '').trim();
+        const headword = String(item.hanzi || '').trim();
+        const readingHtml = reading && reading.toLocaleLowerCase() !== headword.toLocaleLowerCase()
+            ? `<p class="home-learning-reading" lang="${escapeHtml(learningLanguage)}">${escapeHtml(reading)}</p>`
+            : '';
+        return `<li data-word-id="${escapeHtml(item.id || '')}" data-word-section="${escapeHtml(sectionKey)}"><p class="home-learning-word"><bdi lang="${escapeHtml(learningLanguage)}">${escapeHtml(headword)}</bdi> <span>—</span> <bdi>${escapeHtml(item.meaning)}</bdi></p>${readingHtml}<p>${escapeHtml(item.note || '')}</p></li>`;
+    }).join('');
+
+    const heading = document.getElementById('home-learning-samples-heading');
+    const note = document.getElementById('home-learning-samples-note');
+    if (heading) heading.textContent = uiT('homeLearningActiveHeading', { section: sectionLabel });
+    if (note) note.textContent = uiT('homeLearningActiveNote', { section: sectionLabel, stage: stageKey, count: words.length });
+}
 
 function initializeSectionSelection() {
     if (!window.selectionStep) {
@@ -4561,6 +4691,7 @@ function endGame() {
         wrongAnswers.forEach((item) => {
             const itemParagraph = document.createElement('div');
             itemParagraph.className = 'wrong-item';
+            applyWordCardSpeak(itemParagraph, item.reading || item.hanzi, item.category || item.section, item.audioFile);
 
             const examplePinyin = getSentencePinyin(item.example);
             const noteWithPinyin = pinyinizeNote(item.note);
@@ -4571,22 +4702,26 @@ function endGame() {
             const pronunciationBracket = resultReading && resultReading.toLocaleLowerCase() !== String(item.hanzi || '').trim().toLocaleLowerCase()
                 ? `[${escapeHtml(resultReading)}]`
                 : '';
-            const speakValue = escapeHtml(item.reading || item.hanzi);
-            const speakSection = escapeHtml(item.category || item.section || '');
-            const speakAudioFile = escapeHtml(item.audioFile || '');
             const exampleSpeakValue = escapeHtml(item.hanzi);
-            const wordSpeakButton = item.audioFile
-                ? `<button class="note-speak-btn js-action-note-speak-word" type="button" data-hanzi="${speakValue}" data-section="${speakSection}" data-audio-file="${speakAudioFile}">🔊</button>`
-                : '';
+            const headlineHtml = buildWordHeadlineHtml({
+                leadingIcon: '📍',
+                hanzi: item.hanzi,
+                speakHanzi: item.reading || item.hanzi,
+                pronunciationBracket,
+                meaning: item.meaning,
+                extraTag: timeoutTag,
+                audioFile: item.audioFile,
+                section: item.category || item.section
+            });
 
             itemParagraph.innerHTML = `
-                📍 <span class="wrong-pinyin">${escapeHtml(item.hanzi)} ${pronunciationBracket}</span> ➜ <span class="wrong-meaning">${escapeHtml(item.meaning)}</span>${timeoutTag} ${wordSpeakButton}
-                ${item.note ? `<div class="word-note-text">📝 ${noteWithPinyin}</div>` : ""}
+                ${headlineHtml}
+                ${item.note ? buildNoteTextHtml(noteWithPinyin) : ""}
                 ${noteDivider}
                 ${item.example ? `<div class="wrong-example">💬 ${escapeHtmlWithLineBreaks(item.example)} <button class="note-speak-btn example-speak-btn js-action-note-speak-example" type="button" data-hanzi="${exampleSpeakValue}" aria-label="예문 오디오 재생" title="예문 듣기">🔊</button></div>` : ""}
                 ${examplePinyin ? `<div class="wrong-example-pinyin">[${examplePinyin}]</div>` : ""}
                 ${item.exampleTrans ? `<div class="wrong-example-trans">→ ${escapeHtmlWithLineBreaks(item.exampleTrans)}</div>` : ""}
-                
+
                 <!-- ↙️ 틀린 단어 줄 맨 아래에 단어장 버튼 HTML 추가 -->
                 ${buildWordbookButtonHtml(item)}
             `;
@@ -4604,6 +4739,7 @@ function endGame() {
         correctAnswers.forEach((item) => {
             const itemParagraph = document.createElement('div');
             itemParagraph.className = 'wrong-item';
+            applyWordCardSpeak(itemParagraph, item.reading || item.hanzi, item.category || item.section, item.audioFile);
 
             const examplePinyin = getSentencePinyin(item.example);
             const noteWithPinyin = pinyinizeNote(item.note);
@@ -4613,22 +4749,26 @@ function endGame() {
             const pronunciationBracket = resultReading && resultReading.toLocaleLowerCase() !== String(item.hanzi || '').trim().toLocaleLowerCase()
                 ? `[${escapeHtml(resultReading)}]`
                 : '';
-            const speakValue = escapeHtml(item.reading || item.hanzi);
-            const speakSection = escapeHtml(item.category || item.section || '');
-            const speakAudioFile = escapeHtml(item.audioFile || '');
             const exampleSpeakValue = escapeHtml(item.hanzi);
-            const wordSpeakButton = item.audioFile
-                ? `<button class="note-speak-btn js-action-note-speak-word" type="button" data-hanzi="${speakValue}" data-section="${speakSection}" data-audio-file="${speakAudioFile}">🔊</button>`
-                : '';
+            const headlineHtml = buildWordHeadlineHtml({
+                leadingIcon: '✅',
+                hanzi: item.hanzi,
+                speakHanzi: item.reading || item.hanzi,
+                pronunciationBracket,
+                meaning: item.meaning,
+                audioFile: item.audioFile,
+                section: item.category || item.section,
+                pinyinClass: 'wrong-pinyin correct-item-pinyin'
+            });
 
             itemParagraph.innerHTML = `
-                ✅ <span class="wrong-pinyin correct-item-pinyin">${escapeHtml(item.hanzi)} ${pronunciationBracket}</span> ➜ <span class="wrong-meaning">${escapeHtml(item.meaning)}</span> ${wordSpeakButton}
-                ${item.note ? `<div class="word-note-text">📝 ${noteWithPinyin}</div>` : ""}
+                ${headlineHtml}
+                ${item.note ? buildNoteTextHtml(noteWithPinyin) : ""}
                 ${noteDivider}
                 ${item.example ? `<div class="wrong-example">💬 ${escapeHtmlWithLineBreaks(item.example)} <button class="note-speak-btn example-speak-btn js-action-note-speak-example" type="button" data-hanzi="${exampleSpeakValue}" aria-label="예문 오디오 재생" title="예문 듣기">🔊</button></div>` : ""}
                 ${examplePinyin ? `<div class="wrong-example-pinyin">[${examplePinyin}]</div>` : ""}
                 ${item.exampleTrans ? `<div class="wrong-example-trans">→ ${escapeHtmlWithLineBreaks(item.exampleTrans)}</div>` : ""}
-                
+
                 <!-- ↙️ 맞힌 단어 줄 맨 아래에 단어장 버튼 HTML 추가 -->
                 ${buildWordbookButtonHtml(item)}
             `;
@@ -4655,6 +4795,12 @@ async function restartQuiz(operationToken = quizNavigationOperationToken) {
     currentResultNavigationEntryId = '';
     quizSessionMode = window.selectedQuizSection;
     quizSessionCategory = window.selectedQuizCategory;
+
+    const activeHomeLearningSection = getRegisteredSections().find((section) => section.key === quizSessionMode);
+    if (activeHomeLearningSection) {
+        renderHomeLearningActiveSection(Number(quizSessionCategory) || 1, quizSessionMode, activeHomeLearningSection.label);
+    }
+
     wordbookResultRenderToken++;
     const staleWordbookPanel = document.getElementById('wordbook-learning-result');
     if (staleWordbookPanel) staleWordbookPanel.remove();
@@ -5123,6 +5269,47 @@ async function renderWordbookLearningResult(sessionCategory, renderToken) {
     const topic = document.getElementById('result-topic-text');
     topic.insertAdjacentElement('afterend', panel);
     await syncWordbookButtons();
+}
+
+// 카드 전체(설명 문구·빈 여백 포함) 어디를 눌러도 발음이 재생되도록,
+// 헤드라인 안의 개별 버튼이 아니라 카드 엘리먼트 자체에 재생 정보를 심어둡니다.
+function applyWordCardSpeak(element, hanzi, section, audioFile) {
+    if (!audioFile) return;
+    element.classList.add('js-action-word-card-speak');
+    element.dataset.hanzi = hanzi || '';
+    element.dataset.section = section || '';
+    element.dataset.audioFile = audioFile;
+}
+
+// applyWordCardSpeak과 같은 목적이지만, DOM 엘리먼트가 아니라 문자열 템플릿으로
+// 카드를 만드는 곳(예습 아코디언)에서 씁니다. class는 호출부에서 직접 이어붙입니다.
+function wordCardSpeakClass(audioFile) {
+    return audioFile ? ' js-action-word-card-speak' : '';
+}
+
+function wordCardSpeakDataHtml(hanzi, section, audioFile) {
+    if (!audioFile) return '';
+    return ` data-hanzi="${escapeHtml(hanzi || '')}" data-section="${escapeHtml(section || '')}" data-audio-file="${escapeHtml(audioFile)}"`;
+}
+
+// 결과 화면(오답/정답 노트)과 예습 아코디언이 함께 쓰는 단어 줄 상단부.
+// 스피커 버튼을 항상 오른쪽 끝 같은 위치에 고정하고, 단어 텍스트 자체를 눌러도
+// 발음이 재생되도록 같은 클래스(js-action-note-speak-word)를 둘 다에 붙입니다.
+function buildWordHeadlineHtml({ leadingIcon, hanzi, speakHanzi, pronunciationBracket, meaning, extraTag = '', audioFile, section, pinyinClass = 'wrong-pinyin' }) {
+    const hasAudio = Boolean(audioFile);
+    const speakAttrs = `data-hanzi="${escapeHtml(speakHanzi || hanzi || '')}" data-section="${escapeHtml(section || '')}" data-audio-file="${escapeHtml(audioFile || '')}"`;
+    const speakBtn = hasAudio
+        ? `<button class="note-speak-btn js-action-note-speak-word" type="button" ${speakAttrs} aria-label="발음 듣기" title="발음 듣기">🔊</button>`
+        : '';
+    const textClass = hasAudio ? 'word-item-text js-action-note-speak-word' : 'word-item-text';
+    const textAttrs = hasAudio ? ` ${speakAttrs} role="button" tabindex="0"` : '';
+    return `<div class="word-item-headline"><span class="word-item-icon" aria-hidden="true">${leadingIcon}</span><span class="${textClass}"${textAttrs}><span class="${pinyinClass}">${escapeHtml(hanzi)} ${pronunciationBracket}</span> ➜ <span class="wrong-meaning">${escapeHtml(meaning)}</span>${extraTag}</span>${speakBtn}</div>`;
+}
+
+// .word-note-text 줄도 마찬가지로 아이콘과 텍스트를 별도 flex 칸으로 분리합니다.
+// 언어(쉼표 위치 등)에 따라 아이콘이 혼자 떨어지는 줄바꿈 문제를 구조적으로 없앱니다.
+function buildNoteTextHtml(noteHtml) {
+    return `<div class="word-note-text"><span class="word-note-icon" aria-hidden="true">📝</span><span class="word-note-body">${noteHtml}</span></div>`;
 }
 
 function buildWordbookButtonHtml(item) {

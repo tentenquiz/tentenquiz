@@ -27,8 +27,8 @@ function renderHomeLearning(slug) {
 <h2 id="home-learning-title">${escape(t[0])}</h2><p>${escape(t[1])}</p>
 <h3>${escape(t[2])}</h3><p>${escape(t[3])}</p>
 <h3>${escape(t[4])}</h3><p>${escape(t[5])}</p>
-<h3>${escape(t[6])}</h3><p>${escape(t[7])}</p>
-<ul class="home-learning-samples">${words}</ul>
+<h3 id="home-learning-samples-heading">${escape(t[6])}</h3><p id="home-learning-samples-note">${escape(t[7])}</p>
+<ul class="home-learning-samples" id="home-learning-samples">${words}</ul>
 <h3>${escape(t[8])}</h3><p>${escape(t[9])}</p>
 </section>
 <!-- home-learning:end -->`;

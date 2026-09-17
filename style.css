@@ -2118,19 +2118,25 @@ body > canvas {
 .ui-btn-accordion {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
     width: 100%;
-    padding: 14px 16px;
+    min-height: 50px;
+    box-sizing: border-box;
+    padding: 12px 20px;
     background-color: var(--surface-soft);
     border: 1px solid var(--border-soft);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-pill);
     font-size: 15px;
     font-weight: 800;
     color: var(--text-main);
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     margin-bottom: 0;
+}
+
+.acc-toggle > span:first-child {
+    flex: 1;
+    text-align: center;
 }
 
 .acc-toggle:hover,
@@ -2184,6 +2190,228 @@ body > canvas {
 
 .acc-panel p {
     margin: 0;
+}
+
+.stage-preview-groups {
+    display: grid;
+    gap: 20px;
+}
+
+.stage-preview-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 14px;
+}
+
+.stage-preview-picker-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-pill);
+    background-color: var(--surface-soft);
+    color: var(--text-sub);
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.stage-preview-picker-btn.is-active {
+    border-color: var(--primary);
+    background-color: var(--primary-soft);
+    color: var(--primary-dark);
+}
+
+@media (hover: hover) {
+    .stage-preview-picker-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(159, 47, 47, 0.28);
+        box-shadow: 0 8px 16px rgba(84, 62, 35, 0.10);
+    }
+}
+
+@media (max-width: 420px) {
+    .stage-preview-picker {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stage-preview-group-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px;
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--primary-dark);
+}
+
+.stage-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.stage-preview-card {
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-soft);
+}
+
+.stage-preview-word {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.stage-preview-word .stage-preview-arrow {
+    margin: 0 4px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.stage-preview-reading {
+    margin: 2px 0 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.stage-preview-note {
+    margin: 0;
+    color: var(--text-sub);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+    .stage-preview-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* =========================================================
+   단어 사전 정적 페이지(/words/...). 별도 문서 스타일이 아니라
+   퀴즈 앱과 같은 .quiz-container/.card/.stage-preview-* 를 재사용해
+   앱과 이질감이 없도록 맞춥니다.
+   ========================================================= */
+.word-dict-brand {
+    display: block;
+    margin: 0 0 14px;
+    color: var(--primary-dark);
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    text-align: center;
+    text-decoration: none;
+}
+
+.word-dict-card {
+    text-align: left;
+}
+
+.word-dict-title {
+    margin: 0 0 6px;
+    color: var(--primary-dark);
+    font-size: clamp(22px, 6vw, 28px);
+    line-height: 1.25;
+    text-align: center;
+}
+
+.word-dict-intro {
+    margin: 0 0 14px;
+    color: var(--text-sub);
+    font-size: 14.5px;
+    line-height: 1.7;
+}
+
+.word-dict-toc {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 0 24px;
+    padding: 0;
+    list-style: none;
+}
+
+.word-dict-toc a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(159, 47, 47, 0.25);
+    background: #FFF7EC;
+    color: var(--primary-dark);
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.word-dict-hub-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 6px;
+    padding: 0;
+    list-style: none;
+}
+
+.word-dict-hub-list a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-soft);
+    background-color: var(--surface-soft);
+    color: var(--text-main);
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+}
+
+.word-dict-cta {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 28px;
+    padding: 14px 20px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+}
+
+.word-dict-cta:hover {
+    background: var(--primary-dark);
+}
+
+.word-dict-stage {
+    margin-top: 32px;
+    scroll-margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+    .word-dict-hub-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3619,8 +3847,60 @@ html[dir="rtl"] .daily-quiz-status {
     font-weight: 700;
     line-height: 1.55;
     word-break: keep-all;
+    overflow-wrap: anywhere;
 
     box-shadow: 0 3px 8px rgba(84, 62, 35, 0.08);
+}
+
+/* 카드 어디를 눌러도 발음이 재생되고, 버튼처럼 눌리는 느낌을 줍니다. */
+.js-action-word-card-speak {
+    cursor: pointer;
+    transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.js-action-word-card-speak:active {
+    transform: scale(0.985);
+    background-color: rgba(159, 47, 47, 0.06);
+    box-shadow: 0 1px 4px rgba(84, 62, 35, 0.10);
+}
+
+@media (hover: hover) {
+    .js-action-word-card-speak:hover {
+        background-color: rgba(159, 47, 47, 0.04);
+    }
+}
+
+/* 단어 줄 상단부: 스피커 버튼을 텍스트 길이와 무관하게 항상 오른쪽 끝에 고정합니다. */
+.word-item-headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.word-item-icon {
+    flex: 0 0 auto;
+}
+
+.word-item-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.word-item-text.js-action-note-speak-word {
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background-color var(--transition-fast);
+}
+
+.word-item-text.js-action-note-speak-word:focus-visible {
+    background-color: rgba(159, 47, 47, 0.08);
+}
+
+.word-item-headline .note-speak-btn {
+    flex: 0 0 auto;
+    margin-left: 0;
 }
 
 /* 한자 + 병음 부분 (예: 下午 [xiàwǔ]) */
@@ -3670,11 +3950,23 @@ html[dir="rtl"] .daily-quiz-status {
 
 /* 단어 설명(참고) 텍스트 */
 .word-note-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     margin-top: 8px;
 
     font-size: 13px;
     font-weight: 600;
     color: var(--text-muted);
+}
+
+.word-note-icon {
+    flex: 0 0 auto;
+}
+
+.word-note-body {
+    flex: 1;
+    min-width: 0;
 }
 
 .note-example-divider {
@@ -4224,7 +4516,9 @@ html[dir="rtl"] .daily-quiz-status {
     .back-btn,
     .ui-btn-back,
     .replay-same-btn,
-    .ui-btn-replay {
+    .ui-btn-replay,
+    .acc-toggle,
+    .ui-btn-accordion {
         font-size: 17px;
     }
 

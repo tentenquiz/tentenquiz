@@ -99,14 +99,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260908-home-learning-cards-v2">
+    <link rel="stylesheet" href="style.css?v=20260917-stage-preview-10">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "vi";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260908-home-pairs-v3"></script>
+    <script src="i18n.js?v=20260917-stage-preview-3"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -185,8 +185,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     };
 </script>
     <meta property="og:url" content="https://tentenquiz.com/vi/">
-    <meta property="og:image" content="https://tentenquiz.com/assets/social/og-image-vi.png?v=20260908-share-card-v2">
-    <meta property="og:image:secure_url" content="https://tentenquiz.com/assets/social/og-image-vi.png?v=20260908-share-card-v2">
+    <meta property="og:image" content="https://tentenquiz.com/assets/social/og-image-vi.png?v=20260821-tenten10-1">
+    <meta property="og:image:secure_url" content="https://tentenquiz.com/assets/social/og-image-vi.png?v=20260821-tenten10-1">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/png">
@@ -258,6 +258,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <p id="selection-step-desc" class="start-desc" style="display:none;"></p>
 
             <div id="section-grid" class="section-grid"></div>
+
+            <!-- 예습 아코디언: 섹션 선택 단계에서만 노출. 기본 접힘, 누르면 그 스테이지의
+                 단어를 섹션별로 미리 보여줍니다. 섹션 버튼 클릭 → 바로 퀴즈 시작 흐름은 그대로 둡니다. -->
+            <section id="stage-preview-accordion" class="info-accordion stage-preview-accordion" style="display:none;">
+                <button id="stage-preview-toggle" class="acc-toggle ui-btn-accordion js-action-accordion-toggle" type="button" aria-expanded="false" aria-controls="stage-preview-panel">
+                    <span data-i18n="stagePreviewTitle">📖 Xem trước từ vựng</span>
+                    <span class="acc-arrow" aria-hidden="true">▼</span>
+                </button>
+                <div id="stage-preview-panel" class="acc-panel" role="region" aria-labelledby="stage-preview-toggle" aria-hidden="true">
+                    <div class="acc-panel-inner">
+                        <div id="stage-preview-content" class="stage-preview-groups"></div>
+                    </div>
+                </div>
+            </section>
+
             <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">🔄 Chọn lại cấp độ</button>
 
             <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
@@ -474,6 +489,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </div>
 
+        <!-- home-learning:start -->
+<section class="home-learning" lang="vi" dir="ltr" aria-labelledby="home-learning-title">
+<h2 id="home-learning-title">Học từ vựng hằng ngày cùng TentenQuiz</h2><p>TentenQuiz giúp bạn học từ vựng hằng ngày bằng 12 ngôn ngữ qua các câu hỏi trắc nghiệm. Chọn ngôn ngữ bạn hiểu và ngôn ngữ muốn học, rồi luyện tập từng cấp độ.</p>
+<h3>Cách luyện tập</h3><p>Mỗi lượt có 10 câu hỏi, mỗi câu có 10 giây để trả lời. Chọn nghĩa đúng trong bốn đáp án, rồi xem lại những từ bạn trả lời sai. Các cấp độ giúp bạn học từng chút một.</p>
+<h3>Các chủ đề quen thuộc</h3><p>Các phần học gồm con người và các mối quan hệ, đồ ăn và thức uống, nhà cửa và sinh hoạt, thiên nhiên và thời tiết, địa điểm và giao thông, trường học và công việc.</p>
+<h3 id="home-learning-samples-heading">Một số từ bạn có thể học</h3><p id="home-learning-samples-note">Dưới đây là tám từ tiếng Anh ở cấp độ 1 cùng nghĩa tiếng Việt, lấy từ dữ liệu học tập. Đây là ví dụ cố định; khi làm quiz, bạn sẽ học ngôn ngữ đã chọn.</p>
+<ul class="home-learning-samples" id="home-learning-samples"><li data-word-id="pr_0001" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">person</bdi> <span>—</span> <bdi>người</bdi></p><p>Một con người, không nói rõ tuổi hay giới tính.</p></li>
+<li data-word-id="pr_0002" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">family</bdi> <span>—</span> <bdi>gia đình</bdi></p><p>Những người gắn bó do sinh ra, kết hôn hoặc sống chung thân thiết.</p></li>
+<li data-word-id="fd_0001" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">water</bdi> <span>—</span> <bdi>nước</bdi></p><p>Chất lỏng trong suốt được uống để sống và khỏe mạnh.</p></li>
+<li data-word-id="fd_0002" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">rice</bdi> <span>—</span> <bdi>cơm</bdi></p><p>Hạt gạo nấu chín trong nước để ăn.</p></li>
+<li data-word-id="hdl_0001" data-word-section="home_daily_life"><p class="home-learning-word"><bdi lang="en">home</bdi> <span>—</span> <bdi>nhà</bdi></p><p>Nơi một người sinh sống và cảm thấy thuộc về.</p></li>
+<li data-word-id="nw_0001" data-word-section="nature_weather"><p class="home-learning-word"><bdi lang="en">sun</bdi> <span>—</span> <bdi>mặt trời</bdi></p><p>Ngôi sao sáng mang ánh sáng và nhiệt đến cho Trái Đất.</p></li>
+<li data-word-id="pt_0001" data-word-section="places_transport"><p class="home-learning-word"><bdi lang="en">place</bdi> <span>—</span> <bdi>nơi chốn</bdi></p><p>Một khu vực cụ thể nơi người hoặc vật đang ở.</p></li>
+<li data-word-id="sw_0001" data-word-section="school_work"><p class="home-learning-word"><bdi lang="en">school</bdi> <span>—</span> <bdi>trường học</bdi></p><p>Trường học là nơi học sinh đến học cùng giáo viên.</p></li></ul>
+<h3>Theo dõi tiến độ và ôn tập</h3><p>Lịch sử học tập giúp bạn biết mình đã luyện những gì. Hãy làm lại câu trả lời sai hoặc lưu từ vào sổ từ vựng để tập trung ôn tập.</p>
+</section>
+<!-- home-learning:end -->
+
         <!-- ★★★ 아코디언 3개 ★★★ -->
         <section class="info-accordion">
           <button id="stage-why-toggle" class="acc-toggle ui-btn-accordion js-action-accordion-toggle" type="button" aria-expanded="false" aria-controls="stage-why-panel">
@@ -511,27 +544,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
         </section>
 
-        <!-- home-learning:start -->
-<section class="home-learning" lang="vi" dir="ltr" aria-labelledby="home-learning-title">
-<h2 id="home-learning-title">Học từ vựng hằng ngày cùng TentenQuiz</h2><p>TentenQuiz giúp bạn học từ vựng hằng ngày bằng 12 ngôn ngữ qua các câu hỏi trắc nghiệm. Chọn ngôn ngữ bạn hiểu và ngôn ngữ muốn học, rồi luyện tập từng cấp độ.</p>
-<h3>Cách luyện tập</h3><p>Mỗi lượt có 10 câu hỏi, mỗi câu có 10 giây để trả lời. Chọn nghĩa đúng trong bốn đáp án, rồi xem lại những từ bạn trả lời sai. Các cấp độ giúp bạn học từng chút một.</p>
-<h3>Các chủ đề quen thuộc</h3><p>Các phần học gồm con người và các mối quan hệ, đồ ăn và thức uống, nhà cửa và sinh hoạt, thiên nhiên và thời tiết, địa điểm và giao thông, trường học và công việc.</p>
-<h3>Một số từ bạn có thể học</h3><p>Dưới đây là tám từ tiếng Anh ở cấp độ 1 cùng nghĩa tiếng Việt, lấy từ dữ liệu học tập. Đây là ví dụ cố định; khi làm quiz, bạn sẽ học ngôn ngữ đã chọn.</p>
-<ul class="home-learning-samples"><li data-word-id="pr_0001" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">person</bdi> <span>—</span> <bdi>người</bdi></p><p>Một con người, không nói rõ tuổi hay giới tính.</p></li>
-<li data-word-id="pr_0002" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">family</bdi> <span>—</span> <bdi>gia đình</bdi></p><p>Những người gắn bó do sinh ra, kết hôn hoặc sống chung thân thiết.</p></li>
-<li data-word-id="fd_0001" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">water</bdi> <span>—</span> <bdi>nước</bdi></p><p>Chất lỏng trong suốt được uống để sống và khỏe mạnh.</p></li>
-<li data-word-id="fd_0002" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">rice</bdi> <span>—</span> <bdi>cơm</bdi></p><p>Hạt gạo nấu chín trong nước để ăn.</p></li>
-<li data-word-id="hdl_0001" data-word-section="home_daily_life"><p class="home-learning-word"><bdi lang="en">home</bdi> <span>—</span> <bdi>nhà</bdi></p><p>Nơi một người sinh sống và cảm thấy thuộc về.</p></li>
-<li data-word-id="nw_0001" data-word-section="nature_weather"><p class="home-learning-word"><bdi lang="en">sun</bdi> <span>—</span> <bdi>mặt trời</bdi></p><p>Ngôi sao sáng mang ánh sáng và nhiệt đến cho Trái Đất.</p></li>
-<li data-word-id="pt_0001" data-word-section="places_transport"><p class="home-learning-word"><bdi lang="en">place</bdi> <span>—</span> <bdi>nơi chốn</bdi></p><p>Một khu vực cụ thể nơi người hoặc vật đang ở.</p></li>
-<li data-word-id="sw_0001" data-word-section="school_work"><p class="home-learning-word"><bdi lang="en">school</bdi> <span>—</span> <bdi>trường học</bdi></p><p>Trường học là nơi học sinh đến học cùng giáo viên.</p></li></ul>
-<h3>Theo dõi tiến độ và ôn tập</h3><p>Lịch sử học tập giúp bạn biết mình đã luyện những gì. Hãy làm lại câu trả lời sai hoặc lưu từ vào sổ từ vựng để tập trung ôn tập.</p>
-</section>
-<!-- home-learning:end -->
-
         <footer class="site-footer">
             <a href="/vi/about/" class="site-footer-link" data-i18n="aboutSite">Giới thiệu</a>
             <a href="/vi/guide/" class="site-footer-link" data-i18n="learningGuide">Hướng dẫn học</a>
+            <a href="/vi/words/" class="site-footer-link" data-i18n="wordDictionaryLink">Word dictionary</a>
             <a href="/vi/contact/" class="site-footer-link" data-i18n="contactSupport">Trợ giúp &amp; liên hệ</a>
             <a href="/vi/privacy/" class="site-footer-link" data-i18n="privacyPolicy">Quyền riêng tư</a>
             <a href="/vi/terms/" class="site-footer-link" data-i18n="termsOfService">Điều khoản sử dụng</a>
@@ -705,7 +721,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260902-completion-rule-v1"></script>
+<script src="script.js?v=20260917-stage-preview-6"></script>
 <script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>
