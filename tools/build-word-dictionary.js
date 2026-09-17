@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { injectStaticLocaleBootstrap } = require('./lib/static-locale-bootstrap');
 
 const root = path.resolve(__dirname, '..');
 
@@ -40,20 +41,52 @@ function loadWordData() {
     return bySection;
 }
 
-function buildWordCard(word, target, native) {
-    const headword = word[`word_${target}`];
-    const gloss = word[`word_${native}`];
-    const reading = word[`reading_${target}`];
-    const note = word[`note_${native}`];
-    if (!headword || !gloss || !note) throw new Error(`Missing fields for ${word.id} (${target}/${native})`);
-    const readingHtml = reading && reading !== headword
-        ? `<p class="stage-preview-reading" lang="${target}">${escape(reading)}</p>`
-        : '';
-    return `<div class="stage-preview-card"><p class="stage-preview-word" lang="${target}">${escape(headword)}<span class="stage-preview-arrow">—</span>${escape(gloss)}</p>${readingHtml}<p class="stage-preview-note">${escape(note)}</p></div>`;
+// 정적 사전 페이지의 "기본 언어쌍"은 실제 앱(global-config.js)의 cold-start
+// 기본값 규칙과 반드시 같아야 합니다. 그 규칙(영어 인터페이스는 스페인어를
+// 기본 학습 언어로, 그 외에는 영어를 기본 학습 언어로 등)을 여기서 다시
+// 베껴 쓰면 두 곳이 나중에 어긋날 수 있으므로, global-config.js 를 Node
+// vm 샌드박스에서 그대로 실행해 window.resolveTentenLanguageState /
+// window.resolveGlobalQuizItem 을 실제로 호출합니다. localStorage/쿼리/
+// 브라우저 감지가 전부 없는 "완전 첫 방문" 상태를 흉내 내어, 이 locale의
+// interfaceLanguage 만 고정해서 넘깁니다(그 외 우선순위 체인은 실제 코드가
+// 그대로 판단합니다).
+function loadTentenLanguageApi(interfaceLanguageCode) {
+    const sandbox = {
+        window: {
+            location: { href: 'https://tentenquiz.com/' },
+            __TENTEN_STATIC_INTERFACE_LANGUAGE__: interfaceLanguageCode
+        },
+        console,
+        URL,
+        localStorage: { getItem: () => null, setItem: () => {} },
+        navigator: { languages: [], language: '' }
+    };
+    sandbox.globalThis = sandbox.window;
+    vm.createContext(sandbox);
+    vm.runInContext(
+        fs.readFileSync(path.join(root, 'global-config.js'), 'utf8'),
+        sandbox,
+        { filename: 'global-config.js' }
+    );
+    return sandbox.window;
 }
 
-function buildStageBlock(stage, words, target, native, stageLabel) {
-    const cards = words.filter((w) => w.stage === stage).map((w) => buildWordCard(w, target, native)).join('\n');
+// word/quizItem 의 언어 필드 선택(어느 필드가 표제어/뜻/발음인지, zh-TW
+// 주음 처리 등)은 전부 resolveGlobalQuizItem(전달받은 quizItem)이 이미
+// 계산해서 넘겨줍니다 - 여기서 그 규칙을 다시 구현하지 않습니다.
+function buildWordCard(word, quizItem) {
+    const { targetWord, targetReading, meaning, note, learningLanguage } = quizItem;
+    if (!targetWord || !meaning || !note) throw new Error(`Missing fields for ${word.id} (${learningLanguage})`);
+    const readingHtml = targetReading && targetReading !== targetWord
+        ? `<p class="stage-preview-reading" lang="${learningLanguage}">${escape(targetReading)}</p>`
+        : '';
+    return `<div class="stage-preview-card" data-word-id="${escape(word.id)}"><p class="stage-preview-word" lang="${learningLanguage}">${escape(targetWord)}<span class="stage-preview-arrow">—</span>${escape(meaning)}</p>${readingHtml}<p class="stage-preview-note">${escape(note)}</p></div>`;
+}
+
+function buildStageBlock(stage, words, resolveItem, stageLabel) {
+    const cards = words.filter((w) => w.stage === stage)
+        .map((w) => buildWordCard(w, resolveItem(w)))
+        .join('\n');
     return `<section class="word-dict-stage" id="stage-${stage}">
 <h2 class="stage-preview-group-title">${escape(stageLabel.replace('{n}', String(stage)))}</h2>
 <div class="stage-preview-grid">${cards}</div>
@@ -79,14 +112,13 @@ function buildAlternateLinksHtml(siteUrl, targetSlugs, localesBySlug, pathFor) {
     return links.join('\n');
 }
 
-function buildSectionPage({ locale, sectionKey, words, copy, sectionLabel, brandLabel, backLabel, footerNav, pageUrl, siteUrl, alternateLinksHtml }) {
-    const target = locale.slug === 'en' ? 'ja' : 'en';
-    const native = locale.slug.replace(/-/g, '_');
+function buildSectionPage({ locale, sectionKey, words, copy, sectionLabel, brandLabel, backLabel, footerNav, pageUrl, siteUrl, alternateLinksHtml, languageApi }) {
+    const resolvedState = languageApi.tentenGlobal;
     const title = `${sectionLabel} ${copy.titleSuffix} | TentenQuiz`;
     const sectionIntro = copy.sections[sectionKey] || '';
     const description = `${sectionLabel}: ${sectionIntro}`.slice(0, 160);
     const stageBlocks = Array.from({ length: 10 }, (_, i) => i + 1)
-        .map((stage) => buildStageBlock(stage, words, target, native, copy.stageLabel))
+        .map((stage) => buildStageBlock(stage, words, languageApi.resolveGlobalQuizItem, copy.stageLabel))
         .join('\n');
     const quizHref = `/${locale.slug}/`;
 
@@ -107,11 +139,16 @@ ${alternateLinksHtml}
     <meta property="og:url" content="${escape(pageUrl)}">
     <meta name="google" content="notranslate">
 ${faviconBlock()}
+    <script src="/global-config.js?v=20260821-clean-share-url-1"></script>
 </head>
 <body>
     <div class="quiz-container word-dict-container">
         <a class="word-dict-brand" href="${quizHref}" aria-label="${escape(brandLabel)}">🙌 TentenQuiz</a>
-        <article class="card word-dict-card" aria-labelledby="word-dict-title">
+        <article class="card word-dict-card" aria-labelledby="word-dict-title"
+            data-word-dict-section="${escape(sectionKey)}"
+            data-static-learning="${escape(resolvedState.learningLanguage)}"
+            data-static-native="${escape(resolvedState.interfaceLanguage)}"
+            data-static-chinese-reading="${escape(resolvedState.chineseReading)}">
             <h1 id="word-dict-title" class="word-dict-title">${escape(sectionLabel)} ${escape(copy.titleSuffix)}</h1>
             <p class="word-dict-intro">${escape(sectionIntro)} ${escape(copy.intro)}</p>
             <p class="word-dict-intro">${escape(copy.usage)}</p>
@@ -126,6 +163,7 @@ ${stageBlocks}
 ${footerNav.links.map((link) => `            <a href="${escape(link.href)}" class="site-footer-link">${escape(link.label)}</a>`).join('\n')}
         </footer>
     </div>
+    <script src="/word-dictionary.js?v=20260917-word-dict-lang-fix-1"></script>
 </body>
 </html>
 `;
@@ -152,6 +190,7 @@ function buildHubPage({ locale, copy, sectionLabels, footerNav, siteUrl, alterna
 ${alternateLinksHtml}
     <meta name="google" content="notranslate">
 ${faviconBlock()}
+    <script src="/global-config.js?v=20260821-clean-share-url-1"></script>
 </head>
 <body>
     <div class="quiz-container word-dict-container">
@@ -168,6 +207,7 @@ ${items}
 ${footerNav.links.map((link) => `            <a href="${escape(link.href)}" class="site-footer-link">${escape(link.label)}</a>`).join('\n')}
         </footer>
     </div>
+    <script src="/word-dictionary.js?v=20260917-word-dict-lang-fix-1"></script>
 </body>
 </html>
 `;
@@ -192,10 +232,19 @@ function run() {
     for (const slug of targetSlugs) {
         localesBySlug[slug] = JSON.parse(fs.readFileSync(path.join(root, 'locales', slug, 'seo.json'), 'utf8'));
     }
+    // global-config.js 의 __TENTEN_STATIC_LOCALE_PATHS__ 와 동일한 모양의
+    // {languageCode: urlSlug} 맵. index.html 등 다른 정적 페이지들이 이미
+    // 쓰는 것과 같은 구조를 그대로 재사용합니다(새 규칙 아님).
+    const localePathMap = Object.fromEntries(
+        targetSlugs.map((slug) => [localesBySlug[slug].code, localesBySlug[slug].slug])
+    );
 
     for (const slug of targetSlugs) {
         const locale = localesBySlug[slug];
         const copy = wordDictionaryCopy[slug];
+        // 이 locale 방문자의 "완전 첫 방문" 기본 언어쌍 - 실제 앱의
+        // resolveTentenLanguageState/resolveGlobalQuizItem 을 그대로 호출해서 얻습니다.
+        const languageApi = loadTentenLanguageApi(locale.code);
         const messages = i18nMessages[locale.code];
         if (!messages) throw new Error(`i18n.js 에 ${locale.code} 메시지가 없습니다.`);
 
@@ -220,17 +269,19 @@ function run() {
         fs.mkdirSync(wordsDir, { recursive: true });
 
         const hubAlternates = buildAlternateLinksHtml(siteUrl, targetSlugs, localesBySlug, (s) => `/${s}/words/`);
-        fs.writeFileSync(
-            path.join(wordsDir, 'index.html'),
-            buildHubPage({ locale, copy, sectionLabels, footerNav, siteUrl, alternateLinksHtml: hubAlternates })
+        const hubHtml = injectStaticLocaleBootstrap(
+            buildHubPage({ locale, copy, sectionLabels, footerNav, siteUrl, alternateLinksHtml: hubAlternates }),
+            locale,
+            localePathMap
         );
+        fs.writeFileSync(path.join(wordsDir, 'index.html'), hubHtml);
 
         for (const sectionKey of SECTIONS) {
             const sectionDir = path.join(wordsDir, slugify(sectionKey));
             fs.mkdirSync(sectionDir, { recursive: true });
             const pageUrl = `${siteUrl}/${slug}/words/${slugify(sectionKey)}/`;
             const sectionAlternates = buildAlternateLinksHtml(siteUrl, targetSlugs, localesBySlug, (s) => `/${s}/words/${slugify(sectionKey)}/`);
-            const html = buildSectionPage({
+            const html = injectStaticLocaleBootstrap(buildSectionPage({
                 locale,
                 sectionKey,
                 words: wordData[sectionKey],
@@ -241,8 +292,9 @@ function run() {
                 footerNav,
                 pageUrl,
                 siteUrl,
-                alternateLinksHtml: sectionAlternates
-            });
+                alternateLinksHtml: sectionAlternates,
+                languageApi
+            }), locale, localePathMap);
             fs.writeFileSync(path.join(sectionDir, 'index.html'), html);
         }
         console.log(`[word-dictionary] ${slug}: 허브 1개 + 섹션 ${SECTIONS.length}개 생성 완료`);

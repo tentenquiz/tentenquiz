@@ -191,18 +191,7 @@ function injectAlternateLinks(html, links) {
     return injected ? html : html.replace('</head>', `${links}\n</head>`);
 }
 
-function injectStaticLocaleBootstrap(html, locale, localePathMap) {
-    html = html.replace(/\s*<script\b[^>]*data-tenten-static-locale[^>]*>[\s\S]*?<\/script>\s*/gi, '\n');
-    const serializedPaths = JSON.stringify(localePathMap).replace(/</g, '\\u003c');
-    const bootstrap = `    <script data-tenten-static-locale>\n` +
-        `        window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = ${JSON.stringify(locale.code)};\n` +
-        `        window.__TENTEN_STATIC_LOCALE_PATHS__ = ${serializedPaths};\n` +
-        `    </script>\n`;
-    const firstRuntimeScript = /(?=\s*<script\b[^>]*src=["'](?:global-config|content-translations)\.js)/i;
-    return firstRuntimeScript.test(html)
-        ? html.replace(firstRuntimeScript, `\n${bootstrap}`)
-        : html.replace('</head>', `${bootstrap}</head>`);
-}
+const { injectStaticLocaleBootstrap } = require('./lib/static-locale-bootstrap');
 
 function translateDataI18n(html, messages) {
     html = html.replace(

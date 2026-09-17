@@ -2692,6 +2692,7 @@ async function initializeQuizApp() {
         if (redirectSupersededQuizNavigationSession()) return;
         bindStaticUiEvents();
         initializeGlobalLanguageSelectors();
+        syncWordDictionaryLinkPreference();
 
         if (typeof window.loadQuizSectionsFromJson === 'function') {
             await window.loadQuizSectionsFromJson();
@@ -2810,6 +2811,21 @@ function initializeGlobalLanguageSelectors() {
     if (repeatRoundToast) repeatRoundToast.textContent = uiT('repeatRound', { round: 1 });
     updateTimerDisplay();
     applyPageLanguage();
+}
+
+// 단어 사전(/[locale]/words/) 링크가 현재 학습/나의 언어를 그대로 물려받도록
+// href 에 preference 쿼리를 실어 보냅니다. 쿼리 판단 규칙은 새로 만들지 않고
+// buildTentenPreferenceUrl 을 그대로 호출한 뒤 /words/ 경로만 이어붙입니다.
+function syncWordDictionaryLinkPreference() {
+    const link = document.querySelector('a[data-i18n="wordDictionaryLink"]');
+    if (!link || !window.tentenGlobal || typeof window.buildTentenPreferenceUrl !== 'function') return;
+
+    const href = link.getAttribute('href') || '';
+    if (!/^\/[a-z-]+\/words\/$/.test(href)) return;
+
+    const url = new URL(window.buildTentenPreferenceUrl(`${window.location.origin}/`, window.tentenGlobal));
+    url.pathname += 'words/';
+    link.setAttribute('href', `${url.pathname}${url.search}`);
 }
 
 function synchronizeLanguageStateAfterPageShow() {
