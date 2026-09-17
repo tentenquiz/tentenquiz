@@ -99,7 +99,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260918-home-learning-blend-bg-1">
+    <link rel="stylesheet" href="style.css?v=20260918-preview-toggle-neutral-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "ko";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
@@ -259,8 +259,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <div id="section-grid" class="section-grid"></div>
 
+            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">← 스테이지 선택</button>
+
+            <!-- 앱 공유(대문 + 섹션 선택 공용): 특정 점수/섹션이 아니라 앱 자체를 공유합니다.
+                 #section-select-screen 안에 있어 퀴즈/결과 화면에서는 부모째로 숨겨집니다. -->
+            <button id="share-app-btn" class="section-change-btn ui-btn-section-change ui-btn-kakao-soft js-action-share-app" type="button" data-i18n="shareApp">🔗 텐텐퀴즈 공유하기</button>
+
             <!-- 예습 아코디언: 섹션 선택 단계에서만 노출. 기본 접힘, 누르면 그 스테이지의
-                 단어를 섹션별로 미리 보여줍니다. 섹션 버튼 클릭 → 바로 퀴즈 시작 흐름은 그대로 둡니다. -->
+                 단어를 섹션별로 미리 보여줍니다. 섹션 버튼 클릭 → 바로 퀴즈 시작 흐름은 그대로 둡니다.
+                 보조 기능이라 섹션 카드/뒤로가기/공유 버튼보다 아래에 둡니다. -->
             <section id="stage-preview-accordion" class="info-accordion stage-preview-accordion" style="display:none;">
                 <button id="stage-preview-toggle" class="acc-toggle ui-btn-accordion js-action-accordion-toggle" type="button" aria-expanded="false" aria-controls="stage-preview-panel">
                     <span data-i18n="stagePreviewTitle">📖 예습하기</span>
@@ -272,12 +279,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </div>
                 </div>
             </section>
-
-            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">← 스테이지 선택</button>
-
-            <!-- 앱 공유(대문 + 섹션 선택 공용): 특정 점수/섹션이 아니라 앱 자체를 공유합니다.
-                 #section-select-screen 안에 있어 퀴즈/결과 화면에서는 부모째로 숨겨집니다. -->
-            <button id="share-app-btn" class="section-change-btn ui-btn-section-change js-action-share-app" type="button" data-i18n="shareApp">🔗 텐텐퀴즈 공유하기</button>
 
             <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
             <div id="pwa-install-banner" class="pwa-banner" data-pwa-banner="home" hidden>
@@ -478,12 +479,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                        <div id="correct-answers-container" class="correct-answers-box" style="display: none;">
                 <div class="correct-title" data-i18n="correctNotes">⭕ 정답노트</div>
                 <div id="correct-list" class="wrong-list"></div>
-            </div>
-
-            <div style="margin-top: 15px; margin-bottom: 10px;">
-                <button id="share-notes-btn" class="kakao-share-btn ui-btn-kakao result-share-btn js-action-share-notes" type="button">
-                    📝 <span data-i18n="shareNotes">오답·정답 노트 공유하기</span>
-                </button>
             </div>
 
             <!-- 결과 화면에서 선택 화면으로 복귀 -->
@@ -715,7 +710,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260918-share-app-1"></script>
+<script src="script.js?v=20260918-share-hierarchy-1"></script>
 <script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>

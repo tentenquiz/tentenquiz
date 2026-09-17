@@ -304,7 +304,6 @@ function bindStaticUiEvents() {
     bindClick('.js-action-share-app', () => shareApp());
     bindClick('.js-action-daily-quiz', () => openDailyQuizWithHistory());
     bindClick('.js-action-restart-stage', () => restartQuizFromResultWithHistory());
-    bindClick('.js-action-share-notes', () => shareNotesToKakao());
     bindClick('.js-action-result-back-same', () => navigateBackWithQuizHistory(() => goToSameSectionFromResult()));
     bindClick('.js-action-result-back-all', () => navigateBackWithQuizHistory(() => goToAllSectionsFromResult(), true));
 
@@ -5000,38 +4999,6 @@ function shareApp() {
     const title = uiT('shareTitle', { language: getLearningLanguageLabel() });
     const body = uiT('shareAppMessage');
     return shareOrCopy(title, body, false);
-}
-
-async function shareNotesToKakao() {
-    const title = `${uiT('shareTitle', { language: getLearningLanguageLabel() })} · ${uiT('shareNotesTitle')}`;
-    let body = '';
-
-    if (wrongAnswers.length > 0) {
-        body += `${uiT('wrongNotes')}\n`;
-        wrongAnswers.forEach((item) => {
-            const reading = String(item.reading || item.pinyin || '').trim();
-            const readingText = reading && reading.toLocaleLowerCase() !== String(item.hanzi || '').trim().toLocaleLowerCase()
-                ? ` [${reading}]`
-                : '';
-            body += `- ${item.hanzi}${readingText} : ${item.meaning}\n`;
-            if (item.note) body += `  · ${uiT('noteLabel')}: ${item.note}\n`;
-        });
-        body += '\n';
-    }
-
-    if (correctAnswers.length > 0) {
-        body += `${uiT('correctNotes')}\n`;
-        correctAnswers.forEach((item) => {
-            const reading = String(item.reading || item.pinyin || '').trim();
-            const readingText = reading && reading.toLocaleLowerCase() !== String(item.hanzi || '').trim().toLocaleLowerCase()
-                ? ` [${reading}]`
-                : '';
-            body += `- ${item.hanzi}${readingText} : ${item.meaning}\n`;
-            if (item.note) body += `  · ${uiT('noteLabel')}: ${item.note}\n`;
-        });
-    }
-
-    await shareOrCopy(title, body.trim());
 }
 
 function getSentencePinyin(sentence) {
