@@ -99,14 +99,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260917-stage-preview-10">
+    <link rel="stylesheet" href="style.css?v=20260918-home-learning-blend-bg-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "ru";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260917-stage-preview-3"></script>
+    <script src="i18n.js?v=20260918-share-app-1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -273,7 +273,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </section>
 
-            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">🔄 Выбрать другой этап</button>
+            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">← Выбрать этап</button>
+
+            <!-- 앱 공유(대문 + 섹션 선택 공용): 특정 점수/섹션이 아니라 앱 자체를 공유합니다.
+                 #section-select-screen 안에 있어 퀴즈/결과 화면에서는 부모째로 숨겨집니다. -->
+            <button id="share-app-btn" class="section-change-btn ui-btn-section-change js-action-share-app" type="button" data-i18n="shareApp">🔗 Поделиться TentenQuiz</button>
 
             <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
             <div id="pwa-install-banner" class="pwa-banner" data-pwa-banner="home" hidden>
@@ -405,7 +409,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
    </div>
 
     <div class="quiz-section-return-wrap" style="display: none;">
-        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">🔄 Назад к разделам</button>
+        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">← Выбрать раздел</button>
     </div>
 
         <!-- 결과 카드 -->
@@ -450,7 +454,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <div style="margin-top: 20px; margin-bottom: 10px;">
                 <button id="share-result-btn" class="kakao-share-btn ui-btn-kakao result-share-btn js-action-share-result" type="button">
-                    <span data-i18n="shareResult">🔗 Поделиться тестом</span>
+                    <span data-i18n="shareResult">🔗 Поделиться результатом</span>
                 </button>
             </div>
 
@@ -461,13 +465,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div id="result-retry-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="restart-stage-btn" class="replay-same-btn ui-btn-replay js-action-restart-stage" type="button">
-        <span data-i18n="retryStage">🔁 Повторить этап</span>
+        <span data-i18n="retryStage">↻ Повторить</span>
     </button>
 </div>
 
 <div id="result-back-same-top-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="result-back-same-top-btn" class="replay-same-btn ui-btn-replay js-action-result-back-same" type="button">
-        <span data-i18n="backToSections">🔄 Назад к разделам</span>
+        <span data-i18n="backToSections">← Выбрать раздел</span>
     </button>
 </div>
 
@@ -484,26 +488,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- 결과 화면에서 선택 화면으로 복귀 -->
             <div style="margin-top: 10px; display: grid; gap: 10px;">
-                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">🔄 Назад к разделам</button>
-                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">🔄 Назад к этапам</button>
+                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">← Выбрать раздел</button>
+                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">← Выбрать этап</button>
             </div>
         </div>
 
         <!-- home-learning:start -->
 <section class="home-learning" lang="ru" dir="ltr" aria-labelledby="home-learning-title">
-<h2 id="home-learning-title">Учите повседневные слова с TentenQuiz</h2><p>TentenQuiz — это викторина для изучения повседневной лексики на 12 языках. Выберите язык, который вы понимаете, и язык, который хотите учить, а затем занимайтесь по уровням.</p>
-<h3>Как заниматься</h3><p>В каждой игре 10 вопросов, на каждый даётся 10 секунд. Выберите значение слова из четырёх вариантов и разберите ошибки. Уровни помогают учить слова небольшими порциями.</p>
-<h3>Темы из повседневной жизни</h3><p>Разделы посвящены людям и отношениям, еде и напиткам, дому и быту, природе и погоде, местам и транспорту, школе и работе.</p>
-<h3 id="home-learning-samples-heading">Примеры слов для изучения</h3><p id="home-learning-samples-note">Здесь представлены восемь английских слов из первого уровня с переводом на русский. Это постоянные примеры; в викторине используется выбранный вами язык обучения.</p>
-<ul class="home-learning-samples" id="home-learning-samples"><li data-word-id="pr_0001" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">person</bdi> <span>—</span> <bdi>человек</bdi></p><p>Человек без указания возраста или пола.</p></li>
-<li data-word-id="pr_0002" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">family</bdi> <span>—</span> <bdi>семья</bdi></p><p>Люди, связанные рождением, браком или близкой совместной жизнью.</p></li>
-<li data-word-id="fd_0001" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">water</bdi> <span>—</span> <bdi>вода</bdi></p><p>Прозрачная жидкость, которую пьют для жизни и здоровья.</p></li>
-<li data-word-id="fd_0002" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">rice</bdi> <span>—</span> <bdi>рис</bdi></p><p>Рисовые зёрна, сваренные в воде и употребляемые в пищу.</p></li>
-<li data-word-id="hdl_0001" data-word-section="home_daily_life"><p class="home-learning-word"><bdi lang="en">home</bdi> <span>—</span> <bdi>дом</bdi></p><p>Место, где человек живёт и чувствует себя дома.</p></li>
-<li data-word-id="nw_0001" data-word-section="nature_weather"><p class="home-learning-word"><bdi lang="en">sun</bdi> <span>—</span> <bdi>солнце</bdi></p><p>Яркая звезда, которая даёт Земле свет и тепло.</p></li>
-<li data-word-id="pt_0001" data-word-section="places_transport"><p class="home-learning-word"><bdi lang="en">place</bdi> <span>—</span> <bdi>место</bdi></p><p>Определённый участок, где находится человек или предмет.</p></li>
-<li data-word-id="sw_0001" data-word-section="school_work"><p class="home-learning-word"><bdi lang="en">school</bdi> <span>—</span> <bdi>школа</bdi></p><p>Место, куда ученики ходят учиться.</p></li></ul>
-<h3>Следите за прогрессом и повторяйте</h3><p>История обучения показывает, что вы уже изучали. Снова отвечайте на вопросы, в которых ошиблись, или сохраняйте слова в свой словарь для повторения.</p>
+<h2 id="home-learning-title">Учите повседневные слова с TentenQuiz</h2>
+<p>TentenQuiz — это веб-приложение для регулярной практики повседневной лексики на 12 языках с помощью викторин. Каждая игра состоит из 10 вопросов, и на каждый вопрос вы выбираете значение из 4 вариантов за 10 секунд. Вы можете учить слова постепенно, проходя тематические разделы повседневной жизни — «Природа / Погода», «Люди / Отношения», «Еда / Напитки» — и уровни.</p>
+<p>В каждом разделе можно заранее посмотреть слова, которые встретятся в викторине, а также сохранять нужные слова в свой словарь прямо во время учёбы. В <a class="home-learning-link" href="/ru/words/" data-i18n="wordDictionaryLink">Словарь слов</a> можно посмотреть все изучаемые слова и их значения по разделам.</p>
 </section>
 <!-- home-learning:end -->
 
@@ -547,7 +541,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <footer class="site-footer">
             <a href="/ru/about/" class="site-footer-link" data-i18n="aboutSite">О сайте</a>
             <a href="/ru/guide/" class="site-footer-link" data-i18n="learningGuide">Руководство по обучению</a>
-            <a href="/ru/words/" class="site-footer-link" data-i18n="wordDictionaryLink">Word dictionary</a>
+            <a href="/ru/words/" class="site-footer-link" data-i18n="wordDictionaryLink">Словарь слов</a>
             <a href="/ru/contact/" class="site-footer-link" data-i18n="contactSupport">Помощь и контакты</a>
             <a href="/ru/privacy/" class="site-footer-link" data-i18n="privacyPolicy">Конфиденциальность</a>
             <a href="/ru/terms/" class="site-footer-link" data-i18n="termsOfService">Условия использования</a>
@@ -721,7 +715,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260917-word-dict-lang-fix-1"></script>
+<script src="script.js?v=20260918-share-app-1"></script>
 <script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>

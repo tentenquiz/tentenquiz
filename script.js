@@ -301,6 +301,7 @@ function bindStaticUiEvents() {
         navigateBackWithQuizHistory(() => goToSameSectionFromQuiz());
     });
     bindClick('.js-action-share-result', () => shareToKakao());
+    bindClick('.js-action-share-app', () => shareApp());
     bindClick('.js-action-daily-quiz', () => openDailyQuizWithHistory());
     bindClick('.js-action-restart-stage', () => restartQuizFromResultWithHistory());
     bindClick('.js-action-share-notes', () => shareNotesToKakao());
@@ -2816,16 +2817,22 @@ function initializeGlobalLanguageSelectors() {
 // 단어 사전(/[locale]/words/) 링크가 현재 학습/나의 언어를 그대로 물려받도록
 // href 에 preference 쿼리를 실어 보냅니다. 쿼리 판단 규칙은 새로 만들지 않고
 // buildTentenPreferenceUrl 을 그대로 호출한 뒤 /words/ 경로만 이어붙입니다.
+// 같은 data-i18n="wordDictionaryLink" 를 쓰는 링크가 footer 와 홈 소개 카드
+// 두 곳에 있을 수 있어 querySelectorAll 로 전부 갱신합니다.
 function syncWordDictionaryLinkPreference() {
-    const link = document.querySelector('a[data-i18n="wordDictionaryLink"]');
-    if (!link || !window.tentenGlobal || typeof window.buildTentenPreferenceUrl !== 'function') return;
-
-    const href = link.getAttribute('href') || '';
-    if (!/^\/[a-z-]+\/words\/$/.test(href)) return;
+    if (!window.tentenGlobal || typeof window.buildTentenPreferenceUrl !== 'function') return;
+    const links = document.querySelectorAll('a[data-i18n="wordDictionaryLink"]');
+    if (!links.length) return;
 
     const url = new URL(window.buildTentenPreferenceUrl(`${window.location.origin}/`, window.tentenGlobal));
     url.pathname += 'words/';
-    link.setAttribute('href', `${url.pathname}${url.search}`);
+    const wordsHref = `${url.pathname}${url.search}`;
+
+    links.forEach((link) => {
+        const href = link.getAttribute('href') || '';
+        if (!/^\/[a-z-]+\/words\/$/.test(href)) return;
+        link.setAttribute('href', wordsHref);
+    });
 }
 
 function synchronizeLanguageStateAfterPageShow() {
@@ -4984,6 +4991,15 @@ async function copyScoreToClipboard() {
 
 function shareToKakao() {
     return copyScoreToClipboard();
+}
+
+// 대문/섹션 선택 화면 공용 "앱 자체 공유" 버튼. 특정 점수/섹션이 아니라
+// 텐텐퀴즈 앱을 소개하는 짧은 문구만 다르고, 나머지(URL 생성·Web Share·
+// 클립보드 폴백)는 copyScoreToClipboard 와 동일하게 shareOrCopy 를 그대로 씁니다.
+function shareApp() {
+    const title = uiT('shareTitle', { language: getLearningLanguageLabel() });
+    const body = uiT('shareAppMessage');
+    return shareOrCopy(title, body, false);
 }
 
 async function shareNotesToKakao() {

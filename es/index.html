@@ -99,14 +99,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260917-stage-preview-10">
+    <link rel="stylesheet" href="style.css?v=20260918-home-learning-blend-bg-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "es";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260917-stage-preview-3"></script>
+    <script src="i18n.js?v=20260918-share-app-1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -273,7 +273,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </section>
 
-            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">🔄 Elegir otra etapa</button>
+            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">← Elegir etapa</button>
+
+            <!-- 앱 공유(대문 + 섹션 선택 공용): 특정 점수/섹션이 아니라 앱 자체를 공유합니다.
+                 #section-select-screen 안에 있어 퀴즈/결과 화면에서는 부모째로 숨겨집니다. -->
+            <button id="share-app-btn" class="section-change-btn ui-btn-section-change js-action-share-app" type="button" data-i18n="shareApp">🔗 Compartir TentenQuiz</button>
 
             <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
             <div id="pwa-install-banner" class="pwa-banner" data-pwa-banner="home" hidden>
@@ -405,7 +409,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
    </div>
 
     <div class="quiz-section-return-wrap" style="display: none;">
-        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">🔄 Volver a las secciones</button>
+        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">← Elegir sección</button>
     </div>
 
         <!-- 결과 카드 -->
@@ -450,7 +454,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <div style="margin-top: 20px; margin-bottom: 10px;">
                 <button id="share-result-btn" class="kakao-share-btn ui-btn-kakao result-share-btn js-action-share-result" type="button">
-                    <span data-i18n="shareResult">🔗 Compartir quiz</span>
+                    <span data-i18n="shareResult">🔗 Compartir mi puntuación</span>
                 </button>
             </div>
 
@@ -461,13 +465,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div id="result-retry-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="restart-stage-btn" class="replay-same-btn ui-btn-replay js-action-restart-stage" type="button">
-        <span data-i18n="retryStage">🔁 Repetir esta etapa</span>
+        <span data-i18n="retryStage">↻ Intentar de nuevo</span>
     </button>
 </div>
 
 <div id="result-back-same-top-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="result-back-same-top-btn" class="replay-same-btn ui-btn-replay js-action-result-back-same" type="button">
-        <span data-i18n="backToSections">🔄 Volver a las secciones</span>
+        <span data-i18n="backToSections">← Elegir sección</span>
     </button>
 </div>
 
@@ -484,26 +488,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- 결과 화면에서 선택 화면으로 복귀 -->
             <div style="margin-top: 10px; display: grid; gap: 10px;">
-                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">🔄 Volver a las secciones</button>
-                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">🔄 Volver a las etapas</button>
+                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">← Elegir sección</button>
+                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">← Elegir etapa</button>
             </div>
         </div>
 
         <!-- home-learning:start -->
 <section class="home-learning" lang="es" dir="ltr" aria-labelledby="home-learning-title">
-<h2 id="home-learning-title">Aprende palabras cotidianas con TentenQuiz</h2><p>TentenQuiz es un quiz para aprender vocabulario cotidiano en 12 idiomas. Elige el idioma que entiendes y el que quieres practicar, y avanza poco a poco por las etapas.</p>
-<h3>Cómo practicar</h3><p>Cada partida tiene 10 preguntas y dispones de 10 segundos por pregunta. Elige el significado entre cuatro respuestas y revisa las palabras que no acertaste. Las etapas te permiten practicar en sesiones cortas.</p>
-<h3>Temas de la vida diaria</h3><p>Las secciones incluyen personas y relaciones, comida y bebida, hogar y vida diaria, naturaleza y tiempo, lugares y transporte, y escuela y trabajo.</p>
-<h3 id="home-learning-samples-heading">Ejemplos de palabras</h3><p id="home-learning-samples-note">Estas ocho palabras en inglés, con sus significados en español, proceden de la etapa 1. Son ejemplos fijos; en el quiz practicarás el idioma que hayas elegido.</p>
-<ul class="home-learning-samples" id="home-learning-samples"><li data-word-id="pr_0001" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">person</bdi> <span>—</span> <bdi>persona</bdi></p><p>Un ser humano sin indicar edad ni género.</p></li>
-<li data-word-id="pr_0002" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">family</bdi> <span>—</span> <bdi>familia</bdi></p><p>Personas unidas por nacimiento, matrimonio o una vida cercana en común.</p></li>
-<li data-word-id="fd_0001" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">water</bdi> <span>—</span> <bdi>agua</bdi></p><p>Un líquido transparente que se bebe para vivir y mantenerse sano.</p></li>
-<li data-word-id="fd_0002" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">rice</bdi> <span>—</span> <bdi>arroz</bdi></p><p>Granos de arroz cocidos en agua y comidos como alimento.</p></li>
-<li data-word-id="hdl_0001" data-word-section="home_daily_life"><p class="home-learning-word"><bdi lang="en">home</bdi> <span>—</span> <bdi>hogar</bdi></p><p>El lugar donde una persona vive y se siente en casa.</p></li>
-<li data-word-id="nw_0001" data-word-section="nature_weather"><p class="home-learning-word"><bdi lang="en">sun</bdi> <span>—</span> <bdi>sol</bdi></p><p>La estrella brillante que da luz y calor a la Tierra.</p></li>
-<li data-word-id="pt_0001" data-word-section="places_transport"><p class="home-learning-word"><bdi lang="en">place</bdi> <span>—</span> <bdi>lugar</bdi></p><p>Un espacio concreto donde está una persona o cosa.</p></li>
-<li data-word-id="sw_0001" data-word-section="school_work"><p class="home-learning-word"><bdi lang="en">school</bdi> <span>—</span> <bdi>escuela</bdi></p><p>Un lugar al que van los estudiantes para aprender.</p></li></ul>
-<h3>Sigue tu progreso y repasa</h3><p>El historial de aprendizaje te ayuda a ver lo que has practicado. Vuelve a intentar las preguntas que fallaste o guarda palabras en tu vocabulario personal para repasarlas.</p>
+<h2 id="home-learning-title">Aprende palabras cotidianas con TentenQuiz</h2>
+<p>TentenQuiz es una aplicación web para practicar vocabulario cotidiano en 12 idiomas mediante cuestionarios repetidos. Cada partida tiene 10 preguntas, y en cada una eliges el significado entre 4 opciones en 10 segundos. Puedes avanzar poco a poco por secciones temáticas como Naturaleza / Clima, Personas / Relaciones o Comida / Bebida, organizadas en etapas.</p>
+<p>En cada sección puedes ver antes las palabras que aparecen en el quiz, y guardar en tu vocabulario personal las palabras que quieras repasar mientras estudias. En el <a class="home-learning-link" href="/es/words/" data-i18n="wordDictionaryLink">Diccionario de palabras</a> puedes consultar todas las palabras y significados que se pueden aprender, organizados por sección.</p>
 </section>
 <!-- home-learning:end -->
 
@@ -547,7 +541,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <footer class="site-footer">
             <a href="/es/about/" class="site-footer-link" data-i18n="aboutSite">Acerca de</a>
             <a href="/es/guide/" class="site-footer-link" data-i18n="learningGuide">Guía de aprendizaje</a>
-            <a href="/es/words/" class="site-footer-link" data-i18n="wordDictionaryLink">Word dictionary</a>
+            <a href="/es/words/" class="site-footer-link" data-i18n="wordDictionaryLink">Diccionario de palabras</a>
             <a href="/es/contact/" class="site-footer-link" data-i18n="contactSupport">Ayuda y contacto</a>
             <a href="/es/privacy/" class="site-footer-link" data-i18n="privacyPolicy">Privacidad</a>
             <a href="/es/terms/" class="site-footer-link" data-i18n="termsOfService">Términos de servicio</a>
@@ -721,7 +715,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260917-word-dict-lang-fix-1"></script>
+<script src="script.js?v=20260918-share-app-1"></script>
 <script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>

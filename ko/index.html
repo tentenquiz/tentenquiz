@@ -99,14 +99,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
 </script>
 
-    <link rel="stylesheet" href="style.css?v=20260917-stage-preview-10">
+    <link rel="stylesheet" href="style.css?v=20260918-home-learning-blend-bg-1">
     <script data-tenten-static-locale>
         window.__TENTEN_STATIC_INTERFACE_LANGUAGE__ = "ko";
         window.__TENTEN_STATIC_LOCALE_PATHS__ = {"en":"en","ko":"ko","ja":"ja","zh-CN":"zh-cn","zh-TW":"zh-tw","fr":"fr","de":"de","es":"es","vi":"vi","ar":"ar","it":"it","ru":"ru"};
     </script>
 
     <script src="global-config.js?v=20260821-clean-share-url-1"></script>
-    <script src="i18n.js?v=20260917-stage-preview-3"></script>
+    <script src="i18n.js?v=20260918-share-app-1"></script>
     <script src="cloud-backup-config.js?v=20260820-1"></script>
     <script src="db.js?v=20260820-milestone-backup-1"></script>
     <script defer src="vendor/canvas-confetti/confetti.browser.min.js?v=1.9.2"></script>
@@ -273,7 +273,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </section>
 
-            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">🔄 스테이지 다시 고르기</button>
+            <button id="selection-back-btn" class="section-change-btn ui-btn-section-change js-action-back-stage" type="button" style="display:none;" data-i18n="chooseStageAgain">← 스테이지 선택</button>
+
+            <!-- 앱 공유(대문 + 섹션 선택 공용): 특정 점수/섹션이 아니라 앱 자체를 공유합니다.
+                 #section-select-screen 안에 있어 퀴즈/결과 화면에서는 부모째로 숨겨집니다. -->
+            <button id="share-app-btn" class="section-change-btn ui-btn-section-change js-action-share-app" type="button" data-i18n="shareApp">🔗 텐텐퀴즈 공유하기</button>
 
             <!-- 설치 유도 배너 ① 홈: 스테이지/섹션 그리드 바로 아래. 표시 여부·문구는 pwa-install.js 가 채웁니다. -->
             <div id="pwa-install-banner" class="pwa-banner" data-pwa-banner="home" hidden>
@@ -405,7 +409,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
    </div>
 
     <div class="quiz-section-return-wrap" style="display: none;">
-        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">🔄 섹션 선택으로 돌아가기</button>
+        <button class="section-change-btn ui-btn-section-change quiz-section-return-btn js-action-quiz-back-section" type="button" data-i18n="backToSections">← 섹션 선택</button>
     </div>
 
         <!-- 결과 카드 -->
@@ -450,7 +454,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <div style="margin-top: 20px; margin-bottom: 10px;">
                 <button id="share-result-btn" class="kakao-share-btn ui-btn-kakao result-share-btn js-action-share-result" type="button">
-                    <span data-i18n="shareResult">🔗 퀴즈 공유하기</span>
+                    <span data-i18n="shareResult">🔗 내 점수 자랑하기</span>
                 </button>
             </div>
 
@@ -461,13 +465,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div id="result-retry-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="restart-stage-btn" class="replay-same-btn ui-btn-replay js-action-restart-stage" type="button">
-        <span data-i18n="retryStage">🔁 같은 스테이지 다시 도전</span>
+        <span data-i18n="retryStage">↻ 다시 도전</span>
     </button>
 </div>
 
 <div id="result-back-same-top-wrap" style="margin-top: 10px; margin-bottom: 8px;">
     <button id="result-back-same-top-btn" class="replay-same-btn ui-btn-replay js-action-result-back-same" type="button">
-        <span data-i18n="backToSections">🔄 섹션 선택으로 돌아가기</span>
+        <span data-i18n="backToSections">← 섹션 선택</span>
     </button>
 </div>
 
@@ -484,26 +488,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- 결과 화면에서 선택 화면으로 복귀 -->
             <div style="margin-top: 10px; display: grid; gap: 10px;">
-                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">🔄 섹션 선택으로 돌아가기</button>
-                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">🔄 스테이지 선택으로 돌아가기</button>
+                <button id="result-back-same-btn" class="section-change-btn ui-btn-section-change js-action-result-back-same" type="button" data-i18n="backToSections">← 섹션 선택</button>
+                <button id="result-back-all-btn" class="section-change-btn ui-btn-section-change js-action-result-back-all" type="button" data-i18n="backToStages">← 스테이지 선택</button>
             </div>
         </div>
 
         <!-- home-learning:start -->
 <section class="home-learning" lang="ko" dir="ltr" aria-labelledby="home-learning-title">
-<h2 id="home-learning-title">텐텐퀴즈로 익히는 생활 단어</h2><p>텐텐퀴즈는 12개 언어의 일상 어휘를 배우는 단어 퀴즈입니다. 내가 이해하는 언어와 배우고 싶은 언어를 고른 뒤, 스테이지별로 조금씩 학습할 수 있습니다.</p>
-<h3>이렇게 학습해요</h3><p>한 게임은 10문제이며 문제마다 10초가 주어집니다. 네 가지 보기에서 뜻을 고르고, 놓친 단어를 다시 확인하세요. 스테이지로 나뉜 단어를 짧게 반복하며 익힐 수 있습니다.</p>
-<h3>생활 속 주제를 만나요</h3><p>사람과 관계, 음식과 음료, 집과 일상, 자연과 날씨, 장소와 교통, 학교와 일 등 실제 생활에서 만나는 주제로 섹션이 구성되어 있습니다.</p>
-<h3 id="home-learning-samples-heading">실제로 배우는 단어 예시</h3><p id="home-learning-samples-note">아래는 Stage 1 학습 데이터에서 가져온 영어 단어 8개와 한국어 뜻입니다. 고정된 소개용 예시이며, 퀴즈에서는 내가 선택한 언어로 학습합니다.</p>
-<ul class="home-learning-samples" id="home-learning-samples"><li data-word-id="pr_0001" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">person</bdi> <span>—</span> <bdi>사람</bdi></p><p>나이나 성별을 따로 가리지 않은 인간을 가리켜요.</p></li>
-<li data-word-id="pr_0002" data-word-section="people_relations"><p class="home-learning-word"><bdi lang="en">family</bdi> <span>—</span> <bdi>가족</bdi></p><p>혈연이나 혼인 또는 함께하는 생활로 이어진 사람들이에요.</p></li>
-<li data-word-id="fd_0001" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">water</bdi> <span>—</span> <bdi>물</bdi></p><p>사람이 살아가고 건강을 유지하기 위해 마시는 맑은 액체예요.</p></li>
-<li data-word-id="fd_0002" data-word-section="food_drink"><p class="home-learning-word"><bdi lang="en">rice</bdi> <span>—</span> <bdi>밥</bdi></p><p>쌀을 물에 익혀서 먹는 음식이에요.</p></li>
-<li data-word-id="hdl_0001" data-word-section="home_daily_life"><p class="home-learning-word"><bdi lang="en">home</bdi> <span>—</span> <bdi>집</bdi></p><p>사람이 생활하며 머무는 곳이에요.</p></li>
-<li data-word-id="nw_0001" data-word-section="nature_weather"><p class="home-learning-word"><bdi lang="en">sun</bdi> <span>—</span> <bdi>해</bdi></p><p>지구에 빛과 열을 주는 밝은 별이에요.</p></li>
-<li data-word-id="pt_0001" data-word-section="places_transport"><p class="home-learning-word"><bdi lang="en">place</bdi> <span>—</span> <bdi>장소</bdi></p><p>사람이나 물건이 있는 일정한 곳이에요.</p></li>
-<li data-word-id="sw_0001" data-word-section="school_work"><p class="home-learning-word"><bdi lang="en">school</bdi> <span>—</span> <bdi>학교</bdi></p><p>학생들이 배우기 위해 다니는 곳이에요.</p></li></ul>
-<h3>진행 상황을 확인하고 복습해요</h3><p>학습 기록으로 어디까지 공부했는지 확인할 수 있습니다. 틀린 문제는 다시 풀고, 더 익히고 싶은 단어는 내 단어장에 저장해 집중해서 복습하세요.</p>
+<h2 id="home-learning-title">텐텐퀴즈로 익히는 생활 단어</h2>
+<p>텐텐퀴즈는 12개 언어의 일상 단어를 퀴즈로 반복 학습하는 웹앱입니다. 한 게임은 10문제로 구성되며, 문제마다 10초 안에 4개의 선택지에서 뜻을 고릅니다. 자연·날씨, 사람·관계, 음식·음료처럼 생활 주제별 섹션과 스테이지를 따라 단계적으로 단어를 익힐 수 있습니다.</p>
+<p>각 섹션에서는 퀴즈에 나오는 단어를 미리 살펴볼 수 있고, 학습 중 필요한 단어는 단어장에 저장해 다시 확인할 수 있습니다. <a class="home-learning-link" href="/ko/words/" data-i18n="wordDictionaryLink">단어 사전</a>에서는 섹션별 전체 학습 단어와 뜻을 확인할 수 있습니다.</p>
 </section>
 <!-- home-learning:end -->
 
@@ -721,7 +715,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 </script>
-<script src="script.js?v=20260917-word-dict-lang-fix-1"></script>
+<script src="script.js?v=20260918-share-app-1"></script>
 <script src="learning-records.js?v=20260902-completion-rule-v1"></script>
 <script src="vendor/qrcode-generator/qrcode.js?v=1.4.4"></script>
 <script src="cloud-backup.js?v=20260902-completion-rule-v1"></script>

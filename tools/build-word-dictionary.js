@@ -339,11 +339,14 @@ function buildSitemapEntries() {
 // data-i18n="wordDictionaryLink" 속성으로 링크를 식별합니다(href 값으로 찾지 않음).
 // 이렇게 해야 루트 index.html의 href가 무엇이든(예: /en/words/ 고정값) 상관없이
 // 언어별 빌드 때마다 항상 그 언어의 사전 경로로 정확히 재작성됩니다.
+// 홈 소개 카드와 footer 두 곳에 같은 data-i18n 값을 쓰는 링크가 있으므로
+// 반드시 g 플래그로 전부 치환해야 합니다(하나만 바꾸면 나머지가 rewriteLocalizedLinks
+// 의 홈 링크 처리에 걸려 엉뚱한 href로 남습니다).
 // 해당 언어의 단어 사전이 아직 생성되지 않았으면 깨진 링크를 남기지 않도록
 // 링크 자체를 제거합니다.
 function injectWordDictionaryLink(html, locale) {
     const hasDictionary = fs.existsSync(path.join(root, locale.slug, 'words', 'index.html'));
-    const pattern = /<a\b[^>]*data-i18n=["']wordDictionaryLink["'][^>]*>[\s\S]*?<\/a>\s*/i;
+    const pattern = /<a\b[^>]*data-i18n=["']wordDictionaryLink["'][^>]*>[\s\S]*?<\/a>\s*/gi;
     if (!hasDictionary) return html.replace(pattern, '');
     return html.replace(pattern, (tag) => tag.replace(/href=["'][^"']*["']/, `href="/${locale.slug}/words/"`));
 }
